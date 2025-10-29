@@ -1,63 +1,77 @@
-// lib/theme/card_colors.dart
 import 'package:flutter/material.dart';
 
 class CardColors {
-  // Card background gradients
-  static const List<Color> darkGreyGradient = [
-    Color(0xFF404040),
-    Color(0xFF262626),
+  // Card background gradients - Engineering Blue Theme
+  static const List<Color> darkBlueGradient = [
+    Color(0xFF1E3A5F),
+    Color(0xFF0F1F38),
   ];
-  static const List<Color> mediumGreyGradient = [
-    Color(0xFF4A4A4A),
-    Color(0xFF2D2D2D),
+  static const List<Color> mediumBlueGradient = [
+    Color(0xFF2D4F7C),
+    Color(0xFF1A2F4F),
   ];
-  static const List<Color> lightGreyGradient = [
-    Color(0xFF363636),
-    Color(0xFF1F1F1F),
+  static const List<Color> lightBlueGradient = [
+    Color(0xFF3A6395),
+    Color(0xFF243B5C),
   ];
 
-  // Accent colors for icons and shadows
-  static const Color redAccent = Color(0xFFFF6B6B);
-  static const Color blueAccent = Color(0xFF00D4FF);
-  static const Color purpleAccent = Color(0xFFA78BFA);
+  // Accent colors for engineering tools
+  static const Color orangeAccent = Color(0xFFFF7B42);
+  static const Color tealAccent = Color(0xFF00C9B7);
+  static const Color yellowAccent = Color(0xFFFFD166);
 
-  // Shadow colors with opacity
-  static Color get redShadow => redAccent.withValues(alpha: 0.3);
-  static Color get blueShadow => blueAccent.withValues(alpha: 0.3);
-  static Color get purpleShadow => purpleAccent.withValues(alpha: 0.3);
+  // BACKWARD COMPATIBILITY - Keep old names for your existing dashboard code
+  static const Color redAccent = orangeAccent;
+  static const Color blueAccent = tealAccent;
+  static const Color purpleAccent = yellowAccent;
+
+  // Shadow colors (using .withValues instead of .withOpacity)
+  static Color get orangeShadow => orangeAccent.withValues(alpha: 0.3);
+  static Color get tealShadow => tealAccent.withValues(alpha: 0.3);
+  static Color get yellowShadow => yellowAccent.withValues(alpha: 0.3);
+
+  // BACKWARD COMPATIBILITY - Shadow colors
+  static Color get redShadow => orangeShadow;
+  static Color get blueShadow => tealShadow;
+  static Color get purpleShadow => yellowShadow;
 
   // Background colors
-  static const Color scaffoldBackground = Color(0xFF1A1A1A);
-  static const Color dashboardBackground = Color(0xFF121212);
-  static const Color appBarBackground = Color(0xFF1E1E1E);
+  static const Color scaffoldBackground = Color(0xFF0A1429);
+  static const Color dashboardBackground = Color(0xFF0F1C35);
+  static const Color appBarBackground = Color(0xFF152642);
 
   // Text colors
   static const Color textPrimary = Colors.white;
-  static Color get textSecondary => Colors.white.withValues(alpha: 0.6);
-  static const Color textMuted = Color(0xFF999999);
+  static Color get textSecondary => Colors.white.withValues(alpha: 0.8);
+  static const Color textMuted = Color(0xFF94A3B8);
 
   // Border colors
-  static Color get borderLight => Colors.white.withValues(alpha: 0.1);
-  static Color get borderMedium => Colors.white.withValues(alpha: 0.15);
+  static Color get borderLight => Colors.white.withValues(alpha: 0.15);
+  static Color get borderMedium => Colors.white.withValues(alpha: 0.25);
 
-  // Utility methods for getting card color schemes
-  static CardColorScheme get redScheme => CardColorScheme(
-    gradient: darkGreyGradient,
-    accentColor: redAccent,
-    shadowColor: redShadow,
+  // NEW color schemes
+  static CardColorScheme get orangeScheme => CardColorScheme(
+    gradient: darkBlueGradient,
+    accentColor: orangeAccent,
+    shadowColor: orangeShadow,
   );
 
-  static CardColorScheme get blueScheme => CardColorScheme(
-    gradient: mediumGreyGradient,
-    accentColor: blueAccent,
-    shadowColor: blueShadow,
+  static CardColorScheme get tealScheme => CardColorScheme(
+    gradient: mediumBlueGradient,
+    accentColor: tealAccent,
+    shadowColor: tealShadow,
   );
 
-  static CardColorScheme get purpleScheme => CardColorScheme(
-    gradient: lightGreyGradient,
-    accentColor: purpleAccent,
-    shadowColor: purpleShadow,
+  static CardColorScheme get yellowScheme => CardColorScheme(
+    gradient: lightBlueGradient,
+    accentColor: yellowAccent,
+    shadowColor: yellowShadow,
   );
+
+  // BACKWARD COMPATIBILITY - Old scheme names
+  static CardColorScheme get redScheme => orangeScheme;
+  static CardColorScheme get blueScheme => tealScheme;
+  static CardColorScheme get purpleScheme => yellowScheme;
 }
 
 class CardColorScheme {

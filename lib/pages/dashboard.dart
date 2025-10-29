@@ -9,11 +9,6 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: CardColors.dashboardBackground,
-      appBar: AppBar(
-        title: const Text('Engineering Dashboard'),
-        backgroundColor: CardColors.appBarBackground,
-        elevation: 0,
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -21,11 +16,11 @@ class DashboardPage extends StatelessWidget {
           children: [
             // Header Section
             _buildHeader(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             // Stats Overview
             _buildStatsOverview(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
             // Quick Actions Grid
             Expanded(
@@ -33,42 +28,31 @@ class DashboardPage extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
+                childAspectRatio: 1.6, // Adjusted for better proportions
                 children: [
                   _DashboardCard(
                     title: 'Altimeter',
                     subtitle: 'Elevation & Pressure',
-                    icon: Icons.terrain_rounded,
+                    status: 'READY',
                     colorScheme: CardColors.blueScheme,
                   ),
                   _DashboardCard(
                     title: 'Vacuum Converter',
                     subtitle: 'Pressure Units',
-                    icon: Icons.speed_rounded,
+                    status: 'READY',
                     colorScheme: CardColors.redScheme,
                   ),
                   _DashboardCard(
                     title: 'Pressure Converter',
                     subtitle: 'Engineering Pressure Units',
-                    icon: Icons.compress_rounded,
+                    status: 'READY',
                     colorScheme: CardColors.purpleScheme,
                   ),
                   _DashboardCard(
                     title: 'Flow Calculator',
                     subtitle: 'Pipe Flow Rates',
-                    icon: Icons.water_drop_rounded,
+                    status: 'READY',
                     colorScheme: CardColors.blueScheme,
-                  ),
-                  _DashboardCard(
-                    title: 'Thermal Tools',
-                    subtitle: 'Heat Transfer',
-                    icon: Icons.thermostat_rounded,
-                    colorScheme: CardColors.redScheme,
-                  ),
-                  _DashboardCard(
-                    title: 'Material Data',
-                    subtitle: 'Properties Database',
-                    icon: Icons.science_rounded,
-                    colorScheme: CardColors.purpleScheme,
                   ),
                 ],
               ),
@@ -86,36 +70,32 @@ class DashboardPage extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 4,
-              height: 32,
+              width: 3,
+              height: 16,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF666666), Color(0xFF333333)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: CardColors.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Text(
               'ENGINEERING DASHBOARD',
               style: TextStyle(
                 color: CardColors.textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           'Engineering\nControl Center',
           style: TextStyle(
             color: CardColors.textPrimary,
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
             height: 1.1,
           ),
         ),
@@ -126,6 +106,7 @@ class DashboardPage extends StatelessWidget {
             color: CardColors.textSecondary,
             fontSize: 14,
             fontWeight: FontWeight.w400,
+            height: 1.4,
           ),
         ),
       ],
@@ -133,77 +114,72 @@ class DashboardPage extends StatelessWidget {
   }
 
   Widget _buildStatsOverview() {
-    return Container(
-      decoration: BoxDecoration(
-        color: CardColors.appBarBackground,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: CardColors.borderLight, width: 1),
-      ),
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            value: '12',
-            label: 'Active Tools',
-            icon: Icons.engineering_rounded,
-            color: CardColors.blueAccent,
-          ),
-          _buildStatItem(
-            value: '24',
-            label: 'Calculations',
-            icon: Icons.calculate_rounded,
-            color: CardColors.redAccent,
-          ),
-          _buildStatItem(
-            value: '8',
-            label: 'Projects',
-            icon: Icons.folder_rounded,
-            color: CardColors.purpleAccent,
-          ),
-        ],
-      ),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildStatCard(
+          value: '12',
+          label: 'Active Tools',
+          color: CardColors.blueAccent,
+        ),
+        _buildStatCard(
+          value: '24',
+          label: 'Calculations',
+          color: CardColors.redAccent,
+        ),
+        _buildStatCard(
+          value: '8',
+          label: 'Projects',
+          color: CardColors.purpleAccent,
+        ),
+      ],
     );
   }
 
-  Widget _buildStatItem({
+  Widget _buildStatCard({
     required String value,
     required String label,
-    required IconData icon,
     required Color color,
   }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withAlpha((0.1 * 255).toInt()),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: color.withAlpha((0.3 * 255).toInt()),
-              width: 1,
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.1),
+              color.withValues(alpha: 0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                color: CardColors.textPrimary,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          child: Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: CardColors.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: TextStyle(
-            color: CardColors.textPrimary,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: CardColors.textSecondary,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -214,13 +190,13 @@ class DashboardPage extends StatelessWidget {
 class _DashboardCard extends StatelessWidget {
   final String title;
   final String subtitle;
-  final IconData icon;
+  final String status;
   final CardColorScheme colorScheme;
 
   const _DashboardCard({
     required this.title,
     required this.subtitle,
-    required this.icon,
+    required this.status,
     required this.colorScheme,
   });
 
@@ -234,79 +210,37 @@ class _DashboardCard extends StatelessWidget {
             SnackBar(
               content: Text('Opening $title'),
               duration: const Duration(seconds: 1),
-              backgroundColor: CardColors.mediumGreyGradient[0],
+              backgroundColor: colorScheme.gradient[0],
             ),
           );
         },
         child: Container(
           decoration: BoxDecoration(
-            color: colorScheme.gradient[0],
-            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: colorScheme.gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(color: CardColors.borderLight, width: 1),
             boxShadow: [
               BoxShadow(
                 color: colorScheme.shadowColor,
-                blurRadius: 15,
+                blurRadius: 10,
                 spreadRadius: 1,
-                offset: const Offset(0, 6),
-              ),
-              BoxShadow(
-                color: Colors.black.withAlpha((0.2 * 255).toInt()),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -15,
-                bottom: -15,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: colorScheme.shadowColor.withAlpha(
-                      (0.1 * 255).toInt(),
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha((0.08 * 255).toInt()),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: colorScheme.shadowColor.withAlpha(
-                            (0.3 * 255).toInt(),
-                          ),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: colorScheme.shadowColor.withAlpha(
-                              (0.2 * 255).toInt(),
-                            ),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        icon,
-                        color: colorScheme.accentColor,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
                     Text(
                       title,
                       style: TextStyle(
@@ -321,32 +255,53 @@ class _DashboardCard extends StatelessWidget {
                       style: TextStyle(
                         color: CardColors.textSecondary,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 2,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha((0.1 * 255).toInt()),
-                        borderRadius: BorderRadius.circular(4),
+                        color: const Color(0xFF00FF00).withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFF00FF00).withValues(alpha: 0.4),
+                          width: 1,
+                        ),
                       ),
                       child: Text(
-                        'READY',
-                        style: TextStyle(
-                          color: Colors.white.withAlpha((0.8 * 255).toInt()),
+                        status,
+                        style: const TextStyle(
+                          color: Color(0xFF00FF00),
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: colorScheme.accentColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_rounded,
+                        color: colorScheme.accentColor,
+                        size: 16,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

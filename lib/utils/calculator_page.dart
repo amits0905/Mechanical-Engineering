@@ -20,16 +20,16 @@ class CalculatorPage extends StatelessWidget {
           _buildHeader(),
           const SizedBox(height: 24),
 
-          // Calculator Grid
+          // Calculator Grid - Fixed height issue
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _calculatorItems.length,
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: MediaQuery.of(context).size.width > 700 ? 3 : 2,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              childAspectRatio: 0.88,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.1, // Better aspect ratio for content
             ),
             itemBuilder: (context, index) {
               final item = _calculatorItems[index];
@@ -57,36 +57,32 @@ class CalculatorPage extends StatelessWidget {
         Row(
           children: [
             Container(
-              width: 4,
-              height: 32,
+              width: 3,
+              height: 16,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF666666), Color(0xFF333333)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: CardColors.textMuted,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
             Text(
               'ENGINEERING CALCULATORS',
               style: TextStyle(
                 color: CardColors.textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
                 letterSpacing: 1.5,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           'Professional\nCalculation Tools',
           style: TextStyle(
             color: CardColors.textPrimary,
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
             height: 1.1,
           ),
         ),
@@ -108,7 +104,7 @@ class CalculatorPage extends StatelessWidget {
       SnackBar(
         content: Text('$calculatorName - Coming Soon!'),
         duration: const Duration(seconds: 2),
-        backgroundColor: CardColors.darkGreyGradient[0],
+        backgroundColor: CardColors.dashboardBackground,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -172,7 +168,7 @@ final List<_CalculatorItem> _calculatorItems = [
 ];
 
 /// --------------------
-/// Calculator Card Widget
+/// Calculator Card Widget - Optimized height
 /// --------------------
 class _CalculatorCard extends StatelessWidget {
   final String title;
@@ -201,7 +197,11 @@ class _CalculatorCard extends StatelessWidget {
         onTap: isComingSoon ? null : onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: colorScheme.gradient[0],
+            gradient: LinearGradient(
+              colors: colorScheme.gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: CardColors.borderLight, width: 1),
             boxShadow: [
@@ -226,18 +226,21 @@ class _CalculatorCard extends StatelessWidget {
           ),
           child: Stack(
             children: [
+              // Background decorative circle
               Positioned(
-                right: -20,
-                bottom: -20,
+                right: -15,
+                bottom: -15,
                 child: Container(
-                  width: 100,
-                  height: 100,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: colorScheme.shadowColor.withAlpha(26), // 0.1 opacity
+                    color: colorScheme.shadowColor.withAlpha(26),
                     shape: BoxShape.circle,
                   ),
                 ),
               ),
+
+              // Overlay gradient
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -246,103 +249,105 @@ class _CalculatorCard extends StatelessWidget {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white.withAlpha(5), // 0.02 opacity
+                        Colors.white.withAlpha(5),
                         Colors.transparent,
-                        colorScheme.shadowColor.withAlpha(13), // 0.05 opacity
+                        colorScheme.shadowColor.withAlpha(13),
                       ],
                     ),
                   ),
                 ),
               ),
+
+              // Content - Optimized padding and spacing
               Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(14.0), // Reduced padding
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Icon container
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(8), // Smaller padding
                       decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(20), // 0.08 opacity
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.white.withAlpha(20),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: colorScheme.accentColor.withAlpha(
-                            77,
-                          ), // 0.3 opacity
+                          color: colorScheme.accentColor.withAlpha(77),
                           width: 1.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: colorScheme.accentColor.withAlpha(
-                              51,
-                            ), // 0.2 opacity
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            color: colorScheme.accentColor.withAlpha(51),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
                       child: Icon(
                         icon,
                         color: colorScheme.accentColor,
-                        size: 28,
+                        size: 20, // Smaller icon
                       ),
                     ),
-                    const SizedBox(height: 14),
+
+                    const SizedBox(height: 10), // Reduced spacing
+                    // Title
                     Text(
                       title,
                       style: TextStyle(
-                        color: CardColors.textPrimary.withAlpha(
-                          243,
-                        ), // 0.95 opacity
-                        fontSize: 16,
+                        color: CardColors.textPrimary.withAlpha(243),
+                        fontSize: 15, // Slightly smaller font
                         fontWeight: FontWeight.w700,
                         height: 1.2,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+
+                    const SizedBox(height: 3), // Reduced spacing
+                    // Subtitle
                     Text(
                       subtitle,
                       style: TextStyle(
                         color: CardColors.textSecondary,
-                        fontSize: 12,
+                        fontSize: 11, // Slightly smaller font
                         fontWeight: FontWeight.w500,
-                        height: 1.4,
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
+
                     const Spacer(),
+
+                    // Bottom section
                     if (isComingSoon)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
+                          horizontal: 6,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(20), // 0.08 opacity
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white.withAlpha(20),
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: CardColors.borderMedium,
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: colorScheme.shadowColor.withAlpha(
-                                26,
-                              ), // 0.1 opacity
-                              blurRadius: 5,
-                              offset: const Offset(0, 2),
+                              color: colorScheme.shadowColor.withAlpha(26),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
                             ),
                           ],
                         ),
                         child: Text(
                           'COMING SOON',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 8, // Smaller font
                             fontWeight: FontWeight.w800,
-                            color: Colors.white.withAlpha(179), // 0.7 opacity
-                            letterSpacing: 0.8,
+                            color: Colors.white.withAlpha(179),
+                            letterSpacing: 0.7,
                           ),
                         ),
                       )
@@ -351,30 +356,26 @@ class _CalculatorCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(26), // 0.1 opacity
-                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.white.withAlpha(26),
+                              borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: colorScheme.accentColor.withAlpha(
-                                  102,
-                                ), // 0.4 opacity
+                                color: colorScheme.accentColor.withAlpha(102),
                                 width: 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: colorScheme.accentColor.withAlpha(
-                                    51,
-                                  ), // 0.2 opacity
-                                  blurRadius: 5,
-                                  offset: const Offset(0, 2),
+                                  color: colorScheme.accentColor.withAlpha(51),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
                             child: Icon(
                               Icons.arrow_forward_rounded,
                               color: colorScheme.accentColor,
-                              size: 16,
+                              size: 14, // Smaller icon
                             ),
                           ),
                         ],
