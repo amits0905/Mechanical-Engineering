@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'substance_data.dart';
+import 'boiling_point_constants.dart';
 
 class BoilingPointController with ChangeNotifier {
   // Controllers
@@ -7,47 +9,63 @@ class BoilingPointController with ChangeNotifier {
   final TextEditingController temp1Controller = TextEditingController();
   final TextEditingController pressure2Controller = TextEditingController();
   final TextEditingController temp2Controller = TextEditingController();
-  final TextEditingController otherSubstanceController =
+  final TextEditingController customSubstanceNameController =
       TextEditingController();
 
   // State
   String selectedSubstance = 'Water';
   String calculationMode = 't2'; // 't2' or 'p2'
   String result = '';
-  final List<String> substances = [
-    'Water',
-    'Ethanol',
-    'Methanol',
-    'Acetone',
-    'Benzene',
-    'Toluene',
+  bool showCustomSubstanceDialog = false;
+  String? editingSubstanceName; // null when adding, not null when editing
+
+  final SubstanceDatabase substanceDatabase = SubstanceDatabase();
+
+  List<String> get substances => [
+    ...substanceDatabase.getAvailableSubstances(),
     'Other',
   ];
 
-  // Default values for common substances (ΔHvap in kJ/mol, T1 in °C, P1 in Torr)
-  final Map<String, Map<String, double>> substanceDefaults = {
-    'Water': {'dhvap': 40.70, 'temp1': 100.0, 'pressure1': 760.0},
-    'Ethanol': {'dhvap': 38.56, 'temp1': 78.37, 'pressure1': 760.0},
-    'Methanol': {'dhvap': 35.21, 'temp1': 64.7, 'pressure1': 760.0},
-    'Acetone': {'dhvap': 29.1, 'temp1': 56.1, 'pressure1': 760.0},
-    'Benzene': {'dhvap': 30.72, 'temp1': 80.1, 'pressure1': 760.0},
-    'Toluene': {'dhvap': 33.18, 'temp1': 110.6, 'pressure1': 760.0},
-  };
+  Map<String, Map<String, double>> get substanceDefaults =>
+      substanceDatabase.getSubstanceDefaults();
 
   VoidCallback? onUpdate;
 
-  BoilingPointController({this.onUpdate});
+  BoilingPointController({this.onUpdate}) {
+    // Initialize the database and load user substances
+    _initializeDatabase();
+    // Listen to substance database changes
+    substanceDatabase.addListener(_onSubstanceDatabaseChanged);
+  }
+
+  Future<void> _initializeDatabase() async {
+    await substanceDatabase.initialize();
+    // Set initial substance after database is loaded
+    selectedSubstance = substanceDatabase.getDefaultSubstance();
+    loadSubstanceDefaults();
+    onUpdate?.call();
+  }
+
+  void _onSubstanceDatabaseChanged() {
+    onUpdate?.call();
+  }
 
   void loadDefaultValues() {
     loadSubstanceDefaults();
   }
 
   void loadSubstanceDefaults() {
-    if (substanceDefaults.containsKey(selectedSubstance)) {
-      final defaults = substanceDefaults[selectedSubstance]!;
-      dhvapController.text = defaults['dhvap']!.toStringAsFixed(2);
-      temp1Controller.text = defaults['temp1']!.toStringAsFixed(1);
-      pressure1Controller.text = defaults['pressure1']!.toStringAsFixed(0);
+    final defaults = substanceDefaults[selectedSubstance];
+    if (defaults != null) {
+      dhvapController.text = defaults['dhvap']!.toStringAsFixed(
+        BoilingPointConstants.enthalpyPrecision,
+      );
+      temp1Controller.text = defaults['temp1']!.toStringAsFixed(
+        BoilingPointConstants.temperaturePrecision,
+      );
+      pressure1Controller.text = defaults['pressure1']!.toStringAsFixed(
+        BoilingPointConstants.pressurePrecision,
+      );
 
       // Clear result when substance changes
       result = '';
@@ -57,19 +75,158 @@ class BoilingPointController with ChangeNotifier {
 
   void selectSubstance(String? substance) {
     if (substance != null) {
-      selectedSubstance = substance;
+      if (substance == 'Other') {
+        // Show custom substance dialog
+        showCustomSubstanceDialog = true;
+        editingSubstanceName = null;
+        customSubstanceNameController.clear();
+        onUpdate?.call();
+      } else {
+        selectedSubstance = substance;
+        loadSubstanceDefaults();
+      }
+    }
+  }
+
+  // Add new custom substance
+  Future<void> addCustomSubstance() async {
+    final name = customSubstanceNameController.text.trim();
+    final dhvap = double.tryParse(dhvapController.text);
+    final temp1 = double.tryParse(temp1Controller.text);
+    final pressure1 = double.tryParse(pressure1Controller.text);
+
+    if (name.isEmpty) {
+      result = 'Error: Substance name cannot be empty';
+      onUpdate?.call();
+      return;
+    }
+
+    if (dhvap == null || temp1 == null || pressure1 == null) {
+      result = 'Error: Please enter valid values for all fields';
+      onUpdate?.call();
+      return;
+    }
+
+    if (substanceDatabase.substanceNameExists(name)) {
+      result = 'Error: Substance "$name" already exists';
+      onUpdate?.call();
+      return;
+    }
+
+    final newSubstance = Substance(
+      name: name,
+      normalBoilingPoint: temp1,
+      enthalpyVaporization: dhvap,
+      standardPressure: pressure1,
+    );
+
+    await substanceDatabase.addUserSubstance(newSubstance);
+    selectedSubstance = name;
+    showCustomSubstanceDialog = false;
+    result = 'Custom substance "$name" added successfully';
+    onUpdate?.call();
+  }
+
+  // Edit existing custom substance
+  Future<void> editCustomSubstance() async {
+    if (editingSubstanceName == null) return;
+
+    final newName = customSubstanceNameController.text.trim();
+    final dhvap = double.tryParse(dhvapController.text);
+    final temp1 = double.tryParse(temp1Controller.text);
+    final pressure1 = double.tryParse(pressure1Controller.text);
+
+    if (newName.isEmpty) {
+      result = 'Error: Substance name cannot be empty';
+      onUpdate?.call();
+      return;
+    }
+
+    if (dhvap == null || temp1 == null || pressure1 == null) {
+      result = 'Error: Please enter valid values for all fields';
+      onUpdate?.call();
+      return;
+    }
+
+    if (newName != editingSubstanceName &&
+        substanceDatabase.substanceNameExists(newName)) {
+      result = 'Error: Substance "$newName" already exists';
+      onUpdate?.call();
+      return;
+    }
+
+    final updatedSubstance = Substance(
+      name: newName,
+      normalBoilingPoint: temp1,
+      enthalpyVaporization: dhvap,
+      standardPressure: pressure1,
+    );
+
+    await substanceDatabase.updateUserSubstance(
+      editingSubstanceName!,
+      updatedSubstance,
+    );
+    selectedSubstance = newName;
+    showCustomSubstanceDialog = false;
+    editingSubstanceName = null;
+    result = 'Substance updated successfully';
+    onUpdate?.call();
+  }
+
+  // Delete custom substance
+  Future<void> deleteCustomSubstance(String substanceName) async {
+    if (substanceDatabase.isCustomSubstance(substanceName)) {
+      await substanceDatabase.removeUserSubstance(substanceName);
+
+      // If the deleted substance was selected, switch to default
+      if (selectedSubstance == substanceName) {
+        selectedSubstance = substanceDatabase.getDefaultSubstance();
+        loadSubstanceDefaults();
+      }
+
+      result = 'Substance "$substanceName" deleted successfully';
       onUpdate?.call();
     }
   }
 
-  void saveNewSubstance(String name) {
-    if (!substances.contains(name) && name.isNotEmpty) {
-      substances.insert(substances.length - 1, name);
-      selectedSubstance = name;
-      onUpdate?.call();
+  // Start editing a custom substance
+  void startEditingSubstance(String substanceName) {
+    if (substanceDatabase.isCustomSubstance(substanceName)) {
+      final substance = substanceDatabase.getSubstance(substanceName);
+      if (substance != null) {
+        editingSubstanceName = substanceName;
+        customSubstanceNameController.text = substance.name;
+        dhvapController.text = substance.enthalpyVaporization.toStringAsFixed(
+          BoilingPointConstants.enthalpyPrecision,
+        );
+        temp1Controller.text = substance.normalBoilingPoint.toStringAsFixed(
+          BoilingPointConstants.temperaturePrecision,
+        );
+        pressure1Controller.text = substance.standardPressure.toStringAsFixed(
+          BoilingPointConstants.pressurePrecision,
+        );
+        showCustomSubstanceDialog = true;
+        onUpdate?.call();
+      }
     }
   }
 
+  // Cancel custom substance dialog
+  void cancelCustomSubstanceDialog() {
+    showCustomSubstanceDialog = false;
+    editingSubstanceName = null;
+    customSubstanceNameController.clear();
+    onUpdate?.call();
+  }
+
+  // Get only custom substances for management
+  List<String> get customSubstances => substanceDatabase.getCustomSubstances();
+
+  // Check if current selected substance is custom
+  bool get isCurrentSubstanceCustom =>
+      substanceDatabase.isCustomSubstance(selectedSubstance);
+
+  // Calculate boiling point or pressure based on mode
   void calculateBoilingPoint() {
     try {
       final dhvap = double.tryParse(dhvapController.text);
@@ -94,9 +251,7 @@ class BoilingPointController with ChangeNotifier {
         // Calculate T2 using Clausius-Clapeyron equation
         final t2Kelvin = calculateT2(dhvap, p1, t1, p2);
         final t2Celsius = t2Kelvin - 273.15;
-        result = t2Celsius.toStringAsFixed(
-          2,
-        ); // ✅ Fixed: removed unnecessary string interpolation
+        result = 'Final Boiling Point: ${t2Celsius.toStringAsFixed(2)}°C';
       } else {
         if (t2 == null) {
           result = 'Error: Please enter final temperature T₂';
@@ -105,14 +260,12 @@ class BoilingPointController with ChangeNotifier {
         }
         // Calculate P2 using Clausius-Clapeyron equation
         final p2 = calculateP2(dhvap, p1, t1, t2);
-        result = p2.toStringAsFixed(
-          2,
-        ); // ✅ Fixed: removed unnecessary string interpolation
+        result = 'Final Pressure: ${p2.toStringAsFixed(2)} mmHg';
       }
 
       onUpdate?.call();
     } catch (e) {
-      result = 'Error: Invalid calculation';
+      result = 'Error: Invalid calculation - ${e.toString()}';
       onUpdate?.call();
     }
   }
@@ -195,18 +348,15 @@ class BoilingPointController with ChangeNotifier {
     return result;
   }
 
-  void loadSavedSubstances() {
-    // Implementation for loading saved substances from storage
-  }
-
-  @override // ✅ Fixed: Added @override annotation
+  @override
   void dispose() {
+    substanceDatabase.removeListener(_onSubstanceDatabaseChanged);
     dhvapController.dispose();
     pressure1Controller.dispose();
     temp1Controller.dispose();
     pressure2Controller.dispose();
     temp2Controller.dispose();
-    otherSubstanceController.dispose();
-    super.dispose(); // ✅ Fixed: Added super.dispose()
+    customSubstanceNameController.dispose();
+    super.dispose();
   }
 }
