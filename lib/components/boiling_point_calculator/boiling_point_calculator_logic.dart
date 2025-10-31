@@ -26,7 +26,7 @@ class BoilingPointController with ChangeNotifier {
 
   // Default values for common substances (ΔHvap in kJ/mol, T1 in °C, P1 in Torr)
   final Map<String, Map<String, double>> substanceDefaults = {
-    'Water': {'dhvap': 40.65, 'temp1': 100.0, 'pressure1': 760.0},
+    'Water': {'dhvap': 40.70, 'temp1': 100.0, 'pressure1': 760.0},
     'Ethanol': {'dhvap': 38.56, 'temp1': 78.37, 'pressure1': 760.0},
     'Methanol': {'dhvap': 35.21, 'temp1': 64.7, 'pressure1': 760.0},
     'Acetone': {'dhvap': 29.1, 'temp1': 56.1, 'pressure1': 760.0},

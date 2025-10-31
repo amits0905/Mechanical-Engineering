@@ -1,427 +1,306 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'boiling_point_calculator_logic.dart';
-import 'package:mechanicalengineering/theme/app_theme.dart';
-import 'package:mechanicalengineering/components/custom_widgets.dart';
+import 'boiling_point_calculator.dart';
+import 'package:mechanicalengineering/theme/card_colors.dart';
 
-class BoilingPointCalculatorPage extends StatefulWidget {
-  const BoilingPointCalculatorPage({super.key});
+class BoilingPointCalculatorUI extends StatefulWidget {
+  const BoilingPointCalculatorUI({super.key});
 
   @override
-  State<BoilingPointCalculatorPage> createState() =>
-      _BoilingPointCalculatorPageState();
+  State<BoilingPointCalculatorUI> createState() =>
+      _BoilingPointCalculatorUIState();
 }
 
-class _BoilingPointCalculatorPageState
-    extends State<BoilingPointCalculatorPage> {
-  late final BoilingPointController _controller;
+class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
+  String selectedSubstance = 'Ethanol';
+  double initialPressure = 760.0;
+  double finalPressure = 400.0;
+  double initialBoilingPoint = 78.4;
+  double finalBoilingPoint = 50.0;
 
-  final List<TextInputFormatter> _decimalInputFormatter = [
-    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-  ];
+  double? calculatedBoilingPoint;
+  double? calculatedPressure;
+  String? errorMessage;
+  bool calculateTemperature = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = BoilingPointController(onUpdate: _onLogicUpdate);
-    _controller.loadSavedSubstances();
-    _controller.loadDefaultValues(); // Load default values for water
+  void calculate() {
+    setState(() {
+      try {
+        if (calculateTemperature) {
+          calculatedBoilingPoint =
+              BoilingPointCalculator.calculateFinalBoilingPoint(
+                substance: selectedSubstance,
+                initialPressure: initialPressure,
+                finalPressure: finalPressure,
+                initialBoilingPoint: initialBoilingPoint,
+              );
+          calculatedPressure = null;
+        } else {
+          calculatedPressure = BoilingPointCalculator.calculateFinalPressure(
+            substance: selectedSubstance,
+            initialPressure: initialPressure,
+            initialBoilingPoint: initialBoilingPoint,
+            finalBoilingPoint: finalBoilingPoint,
+          );
+          calculatedBoilingPoint = null;
+        }
+        errorMessage = null;
+      } catch (e) {
+        calculatedBoilingPoint = null;
+        calculatedPressure = null;
+        errorMessage = e.toString();
+      }
+    });
   }
 
-  void _onLogicUpdate() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  /// ✅ OPTIMIZED: Using CustomTextField
-  Widget _buildInputField({
-    required String label,
-    required TextEditingController controller,
-    required IconData icon,
-    String? hint,
-    String? suffixText,
-    bool enabled = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: Theme.of(
-            context,
-          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 8),
-        CustomTextField(
-          controller: controller,
-          hintText: hint ?? '',
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: _decimalInputFormatter,
-          prefixIcon: Icon(icon),
-          suffixIcon: suffixText != null
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    suffixText,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                )
-              : null,
-          borderRadius: 8.0,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 16,
-          ),
-          fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade200,
-          enabled: enabled,
-          readOnly: !enabled,
-        ),
-      ],
-    );
-  }
-
-  /// ✅ OPTIMIZED: Using CustomDropdown for substance selection
-  Widget _buildSubstanceDropdown() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Substance',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        CustomDropdown<String>(
-          value: _controller.selectedSubstance,
-          items: _controller.substances.map((String substance) {
-            return DropdownMenuItem<String>(
-              value: substance,
-              child: Text(
-                substance,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            );
-          }).toList(),
-          onChanged: (value) {
-            _controller.selectSubstance(value);
-            _controller
-                .loadSubstanceDefaults(); // Load defaults when substance changes
-          },
-          backgroundColor: Colors.grey.shade50,
-          borderRadius: 8.0,
-        ),
-      ],
-    );
-  }
-
-  /// ✅ OPTIMIZED: Using CustomButton for action buttons
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: CustomButton(
-            text: 'Save & Use',
-            onPressed: () {
-              if (_controller.otherSubstanceController.text.trim().isNotEmpty) {
-                _controller.saveNewSubstance(
-                  _controller.otherSubstanceController.text.trim(),
-                );
-                _controller.otherSubstanceController.clear();
-              }
-            },
-            backgroundColor: Colors.grey.shade300,
-            textColor: Colors.black87,
-            borderRadius: 8.0,
-            height: 48,
-            uppercase: false,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: CustomButton(
-            text: 'Use Only',
-            onPressed: () {
-              _controller.selectedSubstance = _controller
-                  .otherSubstanceController
-                  .text
-                  .trim();
-              _controller.onUpdate?.call();
-            },
-            backgroundColor: AppTheme.primaryColor,
-            borderRadius: 8.0,
-            height: 48,
-            uppercase: false,
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// ✅ NEW: Calculation mode selector
-  Widget _buildCalculationMode() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Calculate',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        SegmentedButton<String>(
-          segments: const [
-            ButtonSegment<String>(value: 't2', label: Text('T₂ (Final Temp)')),
-            ButtonSegment<String>(
-              value: 'p2',
-              label: Text('P₂ (Final Pressure)'),
-            ),
-          ],
-          selected: {_controller.calculationMode},
-          onSelectionChanged: (Set<String> newSelection) {
-            setState(() {
-              _controller.calculationMode = newSelection.first;
-            });
-          },
-        ),
-        const SizedBox(height: 16),
-        Text(
-          _controller.calculationMode == 't2'
-              ? 'Calculate final boiling point T₂ at pressure P₂'
-              : 'Calculate final pressure P₂ at boiling point T₂',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Colors.grey.shade600,
-            fontStyle: FontStyle.italic,
-          ),
-        ),
-      ],
-    );
+  void updateInitialBoilingPoint() {
+    final data = BoilingPointCalculator.getSubstanceData(selectedSubstance);
+    if (data != null) {
+      setState(() {
+        initialBoilingPoint = data['normalBoilingPoint']!;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: CardColors.scaffoldBackground,
       appBar: AppBar(
         title: const Text('Boiling Point Calculator'),
-        centerTitle: true,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        backgroundColor: AppTheme.primaryColor,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            /// 🔹 Substance Selection - OPTIMIZED
-            _buildSubstanceDropdown(),
-
-            /// Show "Other" input
-            if (_controller.selectedSubstance == 'Other') ...[
-              const SizedBox(height: 16),
-              CustomTextField(
-                controller: _controller.otherSubstanceController,
-                hintText: 'Enter new substance name',
-                prefixIcon: const Icon(Icons.edit_outlined),
-                borderRadius: 8.0,
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 16,
-                ),
-                fillColor: Colors.grey.shade50,
-              ),
-              const SizedBox(height: 16),
-              _buildActionButtons(),
-            ],
-            const SizedBox(height: 24),
-
-            /// 🔹 Calculation Mode
-            _buildCalculationMode(),
-            const SizedBox(height: 24),
-
-            /// 🔹 Required Inputs
-            Text(
-              'Required Inputs',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            _buildInputField(
-              label: 'Enthalpy of Vaporization ΔHvap',
-              controller: _controller.dhvapController,
-              icon: Icons.whatshot_outlined,
-              hint: '40.65',
-              suffixText: 'kJ/mol',
-            ),
-            const SizedBox(height: 16),
-
-            _buildInputField(
-              label: 'Initial Pressure P₁',
-              controller: _controller.pressure1Controller,
-              icon: Icons.compress_outlined,
-              hint: '760',
-              suffixText: 'Torr',
-            ),
-            const SizedBox(height: 16),
-
-            _buildInputField(
-              label: 'Initial Boiling Point T₁',
-              controller: _controller.temp1Controller,
-              icon: Icons.thermostat_outlined,
-              hint: '100.0',
-              suffixText: '°C',
-            ),
-            const SizedBox(height: 16),
-
-            /// 🔹 Target Input (changes based on calculation mode)
-            if (_controller.calculationMode == 't2')
-              _buildInputField(
-                label: 'Final Pressure P₂',
-                controller: _controller.pressure2Controller,
-                icon: Icons.compress_outlined,
-                hint: '100',
-                suffixText: 'Torr',
-              )
-            else
-              _buildInputField(
-                label: 'Final Boiling Point T₂',
-                controller: _controller.temp2Controller,
-                icon: Icons.thermostat_outlined,
-                hint: '50.0',
-                suffixText: '°C',
-              ),
-
-            const SizedBox(height: 24),
-
-            /// 🔹 Result Display
-            if (_controller.result.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withAlpha(30),
-                  border: Border.all(
-                    color: AppTheme.primaryColor.withAlpha(100),
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      _controller.calculationMode == 't2'
-                          ? 'Final Boiling Point T₂'
-                          : 'Final Pressure P₂',
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _controller.result,
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    if (_controller.calculationMode == 't2')
-                      const Text(
-                        '°C',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
-                      )
-                    else
-                      const Text(
-                        'Torr',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-
-            const SizedBox(height: 24),
-
-            /// 🔹 Calculate Button - OPTIMIZED
-            CustomButton(
-              text: 'Calculate',
-              onPressed: _controller.calculateBoilingPoint,
-              backgroundColor: AppTheme.primaryColor,
-              borderRadius: 12.0,
-              height: 54,
-              fontSize: 16,
-              uppercase: true,
-            ),
-            const SizedBox(height: 16),
-
-            /// 🔹 Information Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade100),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          // Wrap with SingleChildScrollView
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Calculation Type Toggle
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.blue.shade700,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
                       Text(
-                        'Calculation Info',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade700,
-                        ),
+                        'Calculation Type',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      ToggleButtons(
+                        isSelected: [
+                          calculateTemperature,
+                          !calculateTemperature,
+                        ],
+                        onPressed: (index) {
+                          setState(() {
+                            calculateTemperature = index == 0;
+                          });
+                        },
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Text('Find Boiling Point'),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Text('Find Pressure'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Uses Clausius-Clapeyron equation:\n'
-                    'ln(P₂/P₁) = (ΔHvap/R) × (1/T₁ - 1/T₂)\n'
-                    'where R = 8.314 J/mol·K and temperatures in Kelvin',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.blue.shade800,
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Substance Selection
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Substance',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButton<String>(
+                        value: selectedSubstance,
+                        isExpanded: true,
+                        items: BoilingPointCalculator.getAvailableSubstances()
+                            .map(
+                              (substance) => DropdownMenuItem(
+                                value: substance,
+                                child: Text(substance),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedSubstance = value!;
+                            updateInitialBoilingPoint();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Input Fields
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Input Parameters',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Initial Pressure
+                      _buildNumberInput(
+                        label: 'Initial Pressure (mmHg)',
+                        value: initialPressure,
+                        onChanged: (value) =>
+                            setState(() => initialPressure = value),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Initial Boiling Point
+                      _buildNumberInput(
+                        label: 'Initial Boiling Point (°C)',
+                        value: initialBoilingPoint,
+                        onChanged: (value) =>
+                            setState(() => initialBoilingPoint = value),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Conditional Input based on calculation type
+                      if (calculateTemperature)
+                        _buildNumberInput(
+                          label: 'Final Pressure (mmHg)',
+                          value: finalPressure,
+                          onChanged: (value) =>
+                              setState(() => finalPressure = value),
+                        )
+                      else
+                        _buildNumberInput(
+                          label: 'Final Boiling Point (°C)',
+                          value: finalBoilingPoint,
+                          onChanged: (value) =>
+                              setState(() => finalBoilingPoint = value),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Calculate Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: calculate,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text('Calculate'),
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Results
+              if (calculatedBoilingPoint != null || calculatedPressure != null)
+                Card(
+                  color: Colors.green[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Calculation Result',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: Colors.green[800]),
+                        ),
+                        const SizedBox(height: 8),
+                        if (calculatedBoilingPoint != null)
+                          Text(
+                            'Final Boiling Point: ${calculatedBoilingPoint!.toStringAsFixed(1)}°C',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(color: Colors.green[800]),
+                          ),
+                        if (calculatedPressure != null)
+                          Text(
+                            'Final Pressure: ${calculatedPressure!.toStringAsFixed(1)} mmHg',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(color: Colors.green[800]),
+                          ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+
+              if (errorMessage != null)
+                Card(
+                  color: Colors.red[50],
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Error',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: Colors.red[800]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage!,
+                          style: TextStyle(color: Colors.red[800]),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 20), // Extra space at bottom for scrolling
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildNumberInput({
+    required String label,
+    required double value,
+    required Function(double) onChanged,
+  }) {
+    return TextField(
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.grey[50],
+      ),
+      keyboardType: TextInputType.number,
+      controller: TextEditingController(text: value.toString()),
+      onChanged: (text) {
+        final newValue = double.tryParse(text);
+        if (newValue != null) {
+          onChanged(newValue);
+        }
+      },
     );
   }
 }

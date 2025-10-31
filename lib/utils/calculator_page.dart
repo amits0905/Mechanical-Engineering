@@ -1,6 +1,7 @@
 // lib/utils/calculator_page.dart
 import 'package:flutter/material.dart';
-import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_calculator.dart';
+// import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_calculator.dart';
+import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_calculator_ui.dart'; // Add this import
 import 'package:mechanicalengineering/theme/card_colors.dart';
 
 /// --------------------
@@ -134,10 +135,11 @@ class _CalculatorItem {
 }
 
 /// --------------------
-/// Available Calculators
+/// Available Calculators - FIXED: Remove const from constructor call
 /// --------------------
 final List<_CalculatorItem> _calculatorItems = [
   _CalculatorItem(
+    // Removed 'const' keyword here
     title: 'Boiling Point',
     subtitle: 'Calculate at different pressures',
     icon: Icons.thermostat_rounded,
@@ -146,12 +148,13 @@ final List<_CalculatorItem> _calculatorItems = [
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => const BoilingPointCalculatorPage(),
-        ),
+          builder: (context) => const BoilingPointCalculatorUI(),
+        ), // Use UI widget here
       );
     },
   ),
   _CalculatorItem(
+    // Removed 'const' keyword here
     title: 'Flow Rate',
     subtitle: 'Pipe friction & flow rate',
     icon: Icons.waves_rounded,
@@ -159,6 +162,7 @@ final List<_CalculatorItem> _calculatorItems = [
     isComingSoon: true,
   ),
   _CalculatorItem(
+    // Removed 'const' keyword here
     title: 'Vacuum Evacuation',
     subtitle: 'Time to reach target vacuum',
     icon: Icons.timer_rounded,
