@@ -43,7 +43,7 @@ class PressureUnitUI extends StatelessWidget {
             ),
           ),
           child: Icon(
-            Icons.compress_rounded,
+            Icons.speed_rounded,
             color: PressureUnitConstants.primaryColor,
             size: PressureUnitConstants.headerIconSize,
           ),

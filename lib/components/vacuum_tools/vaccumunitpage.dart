@@ -139,7 +139,7 @@ class _VacuumUnitPageState extends State<VaccumUnitPage> {
             borderRadius: BorderRadius.circular(15),
           ),
           child: Icon(
-            Icons.speed_rounded,
+            Icons.compress_rounded,
             color: VaccumUnitConstants.primaryColor,
             size: 32,
           ),

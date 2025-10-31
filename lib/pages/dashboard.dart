@@ -1,5 +1,8 @@
 // lib/components/dashboard/dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:mechanicalengineering/components/altimeter_tools/altimeter_page.dart';
+import 'package:mechanicalengineering/components/pressure_unit/pressure_unit_page.dart';
+import 'package:mechanicalengineering/components/vacuum_tools/vaccumunitpage.dart';
 import 'package:mechanicalengineering/theme/card_colors.dart';
 
 class DashboardPage extends StatelessWidget {
@@ -28,31 +31,56 @@ class DashboardPage extends StatelessWidget {
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
-                childAspectRatio: 1.6, // Adjusted for better proportions
+                childAspectRatio: 1.6,
                 children: [
                   _DashboardCard(
                     title: 'Altimeter',
                     subtitle: 'Elevation & Pressure',
                     status: 'READY',
                     colorScheme: CardColors.blueScheme,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AltimeterPage(),
+                        ),
+                      );
+                    },
                   ),
                   _DashboardCard(
                     title: 'Vacuum Converter',
                     subtitle: 'Pressure Units',
                     status: 'READY',
                     colorScheme: CardColors.redScheme,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const VaccumUnitPage(),
+                        ),
+                      );
+                    },
                   ),
                   _DashboardCard(
                     title: 'Pressure Converter',
                     subtitle: 'Engineering Pressure Units',
                     status: 'READY',
                     colorScheme: CardColors.purpleScheme,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PressureUnitPage(),
+                        ),
+                      );
+                    },
                   ),
                   _DashboardCard(
                     title: 'Flow Calculator',
                     subtitle: 'Pipe Flow Rates',
-                    status: 'READY',
+                    status: 'COMING SOON',
                     colorScheme: CardColors.blueScheme,
+                    comingSoon: true, // hides arrow & shows overlay
                   ),
                 ],
               ),
@@ -192,117 +220,160 @@ class _DashboardCard extends StatelessWidget {
   final String subtitle;
   final String status;
   final CardColorScheme colorScheme;
+  final VoidCallback? onTap;
+  final bool comingSoon;
 
   const _DashboardCard({
     required this.title,
     required this.subtitle,
     required this.status,
     required this.colorScheme,
+    this.onTap,
+    this.comingSoon = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor: comingSoon ? SystemMouseCursors.basic : SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Opening $title'),
-              duration: const Duration(seconds: 1),
-              backgroundColor: colorScheme.gradient[0],
-            ),
-          );
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: colorScheme.gradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: CardColors.borderLight, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.shadowColor,
-                blurRadius: 10,
-                spreadRadius: 1,
-                offset: const Offset(0, 4),
+        onTap: comingSoon ? null : onTap,
+        child: Stack(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: colorScheme.gradient,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: CardColors.borderLight, width: 1),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.shadowColor,
+                    blurRadius: 10,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: CardColors.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            color: CardColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            color: CardColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: CardColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF00FF00,
+                            ).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF00FF00,
+                              ).withValues(alpha: 0.4),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            status,
+                            style: const TextStyle(
+                              color: Color(0xFF00FF00),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorScheme.accentColor.withValues(
+                              alpha: 0.1,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward_rounded,
+                            color: colorScheme.accentColor,
+                            size: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
+              ),
+            ),
+            // Coming Soon Overlay
+            if (comingSoon)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: CardColors.dashboardBackground.withValues(
+                      alpha: 0.85,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 16,
+                        vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00FF00).withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
+                        color: CardColors.textMuted.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: const Color(0xFF00FF00).withValues(alpha: 0.4),
+                          color: CardColors.textMuted.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),
                       child: Text(
-                        status,
-                        style: const TextStyle(
-                          color: Color(0xFF00FF00),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                        'COMING SOON',
+                        style: TextStyle(
+                          color: CardColors.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
                         ),
                       ),
                     ),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: colorScheme.accentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_rounded,
-                        color: colorScheme.accentColor,
-                        size: 16,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ],
-            ),
-          ),
+              ),
+          ],
         ),
       ),
     );

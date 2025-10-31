@@ -191,9 +191,10 @@ class AppTheme {
         fontWeight: FontWeight.w700,
       ),
       toolbarHeight: 64,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
-      ),
+      shape: null,
+      // const RoundedRectangleBorder(
+      //   borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+      // ),
     ),
 
     // Enhanced Input Decoration
