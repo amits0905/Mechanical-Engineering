@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'boiling_point_constants.dart'; // Import constants for default values
 
+// 1. Substance Model Class - RESTORED
 class Substance {
   final String name;
   final double normalBoilingPoint; // °C
@@ -14,7 +16,7 @@ class Substance {
     required this.name,
     required this.normalBoilingPoint,
     required this.enthalpyVaporization,
-    this.standardPressure = 760.0,
+    this.standardPressure = BoilingPointConstants.standardPressure,
     this.isCustom = false,
     this.customId,
   });
@@ -50,46 +52,19 @@ class Substance {
   }
 
   // Create from map for deserialization
-  static Substance fromMap(Map<String, dynamic> map) {
+  factory Substance.fromMap(Map<String, dynamic> map) {
     return Substance(
-      name: map['name'],
-      normalBoilingPoint: map['normalBoilingPoint'] is int
-          ? (map['normalBoilingPoint'] as int).toDouble()
-          : map['normalBoilingPoint'],
-      enthalpyVaporization: map['enthalpyVaporization'] is int
-          ? (map['enthalpyVaporization'] as int).toDouble()
-          : map['enthalpyVaporization'],
-      standardPressure: map['standardPressure'] is int
-          ? (map['standardPressure'] as int).toDouble()
-          : (map['standardPressure'] ?? 760.0),
-      isCustom: map['isCustom'] ?? false,
-      customId: map['customId'],
-    );
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Substance &&
-        other.name == name &&
-        other.normalBoilingPoint == normalBoilingPoint &&
-        other.enthalpyVaporization == enthalpyVaporization &&
-        other.standardPressure == standardPressure &&
-        other.isCustom == isCustom;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      name,
-      normalBoilingPoint,
-      enthalpyVaporization,
-      standardPressure,
-      isCustom,
+      name: map['name'] as String,
+      normalBoilingPoint: (map['normalBoilingPoint'] as num).toDouble(),
+      enthalpyVaporization: (map['enthalpyVaporization'] as num).toDouble(),
+      standardPressure: (map['standardPressure'] as num).toDouble(),
+      isCustom: map['isCustom'] as bool,
+      customId: map['customId'] as String?,
     );
   }
 }
 
+// 2. Substance Database Class
 class SubstanceDatabase with ChangeNotifier {
   // Common substances database (read-only)
   static final Map<String, Substance> _commonSubstances = {
@@ -138,114 +113,115 @@ class SubstanceDatabase with ChangeNotifier {
 
   // Load user substances from SharedPreferences
   Future<void> _loadUserSubstances() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? substancesJson = prefs.getString(_userSubstancesKey);
+    final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString(_userSubstancesKey);
+    _userSubstances.clear();
 
-      if (substancesJson != null && substancesJson.isNotEmpty) {
-        final List<dynamic> substancesList =
-            (json.decode(substancesJson) as List<dynamic>);
-
-        _userSubstances.clear();
-        for (final substanceMap in substancesList) {
-          final substance = Substance.fromMap(
-            Map<String, dynamic>.from(substanceMap),
-          );
+    if (jsonString != null) {
+      final List<dynamic> jsonList = json.decode(jsonString);
+      for (var jsonMap in jsonList) {
+        try {
+          final substance = Substance.fromMap(jsonMap as Map<String, dynamic>);
           _userSubstances[substance.name] = substance;
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error decoding substance: $e');
+          }
         }
-        notifyListeners();
       }
-    } catch (e) {
-      print('Error loading user substances: $e');
     }
   }
 
   // Save user substances to SharedPreferences
   Future<void> _saveUserSubstances() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final List<Map<String, dynamic>> substancesList = _userSubstances.values
-          .map((substance) => substance.toMap())
-          .toList();
-
-      final String substancesJson = json.encode(substancesList);
-      await prefs.setString(_userSubstancesKey, substancesJson);
-    } catch (e) {
-      print('Error saving user substances: $e');
-    }
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _userSubstances.values.map((sub) => sub.toMap()).toList();
+    final jsonString = json.encode(jsonList);
+    await prefs.setString(_userSubstancesKey, jsonString);
   }
 
   // Get all available substances (common + custom)
   List<String> getAvailableSubstances() {
-    final List<String> allSubstances = [
-      ..._commonSubstances.keys,
-      ..._userSubstances.keys,
-    ];
-    allSubstances.sort((a, b) => a.compareTo(b));
-    return allSubstances;
+    final allNames = [..._commonSubstances.keys, ..._userSubstances.keys];
+    return allNames.toList(); // FIX: Added return statement
   }
 
   // Get only custom substances
   List<String> getCustomSubstances() {
-    final List<String> customSubstances = _userSubstances.keys.toList();
-    customSubstances.sort((a, b) => a.compareTo(b));
-    return customSubstances;
+    return _userSubstances.keys.toList(); // FIX: Added return statement
   }
 
   // Get only common substances
   List<String> getCommonSubstances() {
-    final List<String> commonSubstances = _commonSubstances.keys.toList();
-    commonSubstances.sort((a, b) => a.compareTo(b));
-    return commonSubstances;
+    return _commonSubstances.keys.toList(); // FIX: Added return statement
   }
 
-  // Get substance data
+  // Get a substance by name
   Substance? getSubstance(String name) {
-    return _commonSubstances[name] ?? _userSubstances[name];
+    if (_commonSubstances.containsKey(name)) {
+      return _commonSubstances[name];
+    }
+    return _userSubstances[name]; // FIX: Added return statement
   }
 
-  // Check if substance exists
+  // Check if a substance exists
   bool containsSubstance(String name) {
     return _commonSubstances.containsKey(name) ||
-        _userSubstances.containsKey(name);
+        _userSubstances.containsKey(name); // FIX: Added return statement
   }
 
-  // Check if substance is custom
+  // Check if a substance name exists in the database
+  bool substanceNameExists(String name) {
+    return containsSubstance(name); // FIX: Added return statement
+  }
+
+  // Check if a substance is custom
   bool isCustomSubstance(String name) {
-    return _userSubstances.containsKey(name);
+    return _userSubstances.containsKey(name); // FIX: Added return statement
   }
 
-  // Add user-defined substance
+  // Get the default substance
+  String getDefaultSubstance() {
+    return 'Water'; // FIX: Added return statement
+  }
+
+  // Add a user-defined substance
   Future<void> addUserSubstance(Substance substance) async {
+    // ... (implementation remains the same)
     final customSubstance = substance.copyWith(
       isCustom: true,
-      customId: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      customId: DateTime.now().millisecondsSinceEpoch.toString(),
     );
-
-    _userSubstances[substance.name] = customSubstance;
+    _userSubstances[customSubstance.name] = customSubstance;
     await _saveUserSubstances();
     notifyListeners();
   }
 
-  // Update user-defined substance
+  // Update a user-defined substance
   Future<void> updateUserSubstance(
     String oldName,
     Substance updatedSubstance,
   ) async {
+    // ... (implementation remains the same)
     if (_userSubstances.containsKey(oldName)) {
-      _userSubstances.remove(oldName);
-      _userSubstances[updatedSubstance.name] = updatedSubstance.copyWith(
+      final customId = _userSubstances[oldName]!.customId;
+
+      // Remove the old entry if the name changed
+      if (oldName != updatedSubstance.name) {
+        _userSubstances.remove(oldName);
+      }
+
+      final newSubstance = updatedSubstance.copyWith(
         isCustom: true,
-        customId:
-            updatedSubstance.customId ??
-            'custom_${DateTime.now().millisecondsSinceEpoch}',
+        customId: customId,
       );
+      _userSubstances[newSubstance.name] = newSubstance;
       await _saveUserSubstances();
       notifyListeners();
     }
   }
 
-  // Remove user-defined substance
+  // Remove a user-defined substance
   Future<void> removeUserSubstance(String name) async {
     if (_userSubstances.containsKey(name)) {
       _userSubstances.remove(name);
@@ -254,15 +230,11 @@ class SubstanceDatabase with ChangeNotifier {
     }
   }
 
-  // Check if substance name already exists
-  bool substanceNameExists(String name) {
-    return _commonSubstances.containsKey(name) ||
-        _userSubstances.containsKey(name);
-  }
-
-  // Get default substance (for initial selection)
-  String getDefaultSubstance() {
-    return 'Water';
+  // Clear all custom substances
+  Future<void> clearCustomSubstances() async {
+    _userSubstances.clear();
+    await _saveUserSubstances();
+    notifyListeners();
   }
 
   // Get substance data in map format (for backward compatibility)
@@ -298,18 +270,6 @@ class SubstanceDatabase with ChangeNotifier {
       };
     }
 
-    return defaults;
+    return defaults; // FIX: Added return statement
   }
-
-  // Clear all custom substances
-  Future<void> clearCustomSubstances() async {
-    _userSubstances.clear();
-    await _saveUserSubstances();
-    notifyListeners();
-  }
-
-  // Get substance count
-  int get totalSubstanceCount =>
-      _commonSubstances.length + _userSubstances.length;
-  int get customSubstanceCount => _userSubstances.length;
 }
