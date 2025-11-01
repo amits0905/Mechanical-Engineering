@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'boiling_point_calculator_logic.dart';
 import 'package:mechanicalengineering/theme/app_theme.dart';
 import 'package:mechanicalengineering/components/custom_widgets.dart';
-// 👈 NEW IMPORT: Importing the separated dialogs
-import 'custom_substance_widgets.dart';
+// 👈 UPDATED IMPORTS: Importing both separated dialogs
+import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/custom_substance_widgets.dart';
+import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/manage_substances_dialog.dart';
 
 class BoilingPointCalculatorUI extends StatefulWidget {
   const BoilingPointCalculatorUI({super.key});
@@ -318,7 +319,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
                                 color: AppTheme.primaryColor.withValues(
                                   alpha: 0.1,
                                 ),
-                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 Icons.edit_note_outlined,

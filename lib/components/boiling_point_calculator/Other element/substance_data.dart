@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-import 'boiling_point_constants.dart'; // Import constants for default values
+import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_constants.dart';
 
 // 1. Substance Model Class - RESTORED
 class Substance {

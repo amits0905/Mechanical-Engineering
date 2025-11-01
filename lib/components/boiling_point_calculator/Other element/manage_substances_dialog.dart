@@ -1,227 +1,9 @@
 import 'package:flutter/material.dart';
-import 'boiling_point_calculator_logic.dart'; // Must be imported for the Controller
+import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_calculator_logic.dart';
 import 'package:mechanicalengineering/theme/app_theme.dart';
-import 'package:mechanicalengineering/components/custom_widgets.dart';
 
-// --------------------------------------------------------------------------
-// Custom Substance Dialog (For Adding/Editing)
-// --------------------------------------------------------------------------
-
-class CustomSubstanceDialog extends StatefulWidget {
-  final BoilingPointController controller;
-
-  const CustomSubstanceDialog({super.key, required this.controller});
-
-  @override
-  State<CustomSubstanceDialog> createState() => _CustomSubstanceDialogState();
-}
-
-class _CustomSubstanceDialogState extends State<CustomSubstanceDialog> {
-  // Methods for handling updates and additions remain the same
-  Future<void> _handleEditSubstance() async {
-    await widget.controller.editCustomSubstance();
-    if (mounted && context.mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  Future<void> _handleAddSubstance() async {
-    await widget.controller.addCustomSubstance();
-    if (mounted && context.mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isEditing = widget.controller.editingSubstanceName != null;
-
-    return Dialog(
-      backgroundColor: AppTheme.scaffoldBackgroundColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isEditing ? 'Edit Substance' : 'Add Custom Substance',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-            CustomTextField(
-              controller: widget.controller.customSubstanceNameController,
-              labelText: 'Substance Name',
-              fillColor: AppTheme.surfaceColor,
-              borderRadius: 12,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Substance Properties:',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppTheme.textPrimaryColor,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildPropertyField(
-              label: 'Enthalpy of Vaporization (ΔHvap)',
-              unit: 'kJ/mol',
-              controller: widget.controller.dhvapController,
-            ),
-            const SizedBox(height: 12),
-            _buildPropertyField(
-              label: 'Initial Boiling Point (T₁)',
-              unit: '°C',
-              controller: widget.controller.temp1Controller,
-            ),
-            const SizedBox(height: 12),
-            _buildPropertyField(
-              label: 'Standard Pressure (P₁)',
-              unit: 'mmHg',
-              controller: widget.controller.pressure1Controller,
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: widget.controller.cancelCustomSubstanceDialog,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: CustomButton(
-                    text: isEditing ? 'Update' : 'Add',
-                    onPressed: isEditing
-                        ? _handleEditSubstance
-                        : _handleAddSubstance,
-                    backgroundColor: AppTheme.primaryColor,
-                    textColor: AppTheme.textOnPrimaryColor,
-                    borderRadius: 12,
-                    height: 48,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // The helper method for the input fields also moves here
-  Widget _buildPropertyField({
-    required String label,
-    required String unit,
-    required TextEditingController controller,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppTheme.textSecondaryColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: AppTheme.dividerColor.withValues(alpha: 0.4),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    hintText: 'Enter value',
-                    hintStyle: TextStyle(
-                      color: AppTheme.textSecondaryColor.withValues(alpha: 0.3),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  onChanged: (value) {
-                    // Auto-format to 2 decimal places when user finishes typing
-                    if (value.isNotEmpty) {
-                      final parsed = double.tryParse(value);
-                      if (parsed != null) {
-                        final formatted = parsed.toStringAsFixed(2);
-                        if (formatted != value && !value.endsWith('.')) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (controller.text == value) {
-                              controller.text = formatted;
-                              controller.selection = TextSelection.fromPosition(
-                                TextPosition(offset: formatted.length),
-                              );
-                            }
-                          });
-                        }
-                      }
-                    }
-                  },
-                ),
-              ),
-              Container(
-                width: 70,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(7),
-                    bottomRight: Radius.circular(7),
-                  ),
-                ),
-                child: Text(
-                  unit,
-                  style: TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+// Note: It's assumed CustomSubstanceDialog is imported by the UI file,
+// and this file only needs the Controller and common UI components.
 
 // --------------------------------------------------------------------------
 // Manage Substances Dialog (For Viewing/Deleting)
@@ -237,15 +19,29 @@ class ManageSubstancesDialog extends StatefulWidget {
 }
 
 class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
-  // Methods for handling delete and clear all remain the same
+  @override
+  void initState() {
+    super.initState();
+    // Ensure the state updates if the controller changes the substance list
+    widget.controller.onUpdate = _updateState;
+  }
+
+  // Local state update method
+  void _updateState() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   Future<void> _handleDeleteSubstance(
     String substanceName,
     BuildContext dialogContext,
   ) async {
     await widget.controller.deleteCustomSubstance(substanceName);
-    // Logic to close the current dialog and potentially the parent dialog
+    // Logic to close the current confirmation dialog and update the list
     if (mounted && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
+      // If the list becomes empty, also close the Manage dialog
       if (widget.controller.customSubstances.isEmpty) {
         if (context.mounted) {
           Navigator.of(context).pop();
@@ -256,7 +52,7 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
 
   Future<void> _handleClearAllSubstances(BuildContext dialogContext) async {
     await widget.controller.substanceDatabase.clearCustomSubstances();
-    // Logic to close the dialogs
+    // Logic to close both confirmation and management dialogs
     if (mounted && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
       if (context.mounted) {
@@ -265,7 +61,6 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
     }
   }
 
-  // Helper methods for showing confirmations remain the same
   void _showDeleteConfirmation(String substanceName) {
     showDialog(
       context: context,
@@ -312,7 +107,6 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // ... (implementation of ManageSubstancesDialog build method)
     final customSubstances = widget.controller.customSubstances;
 
     return Dialog(
@@ -422,6 +216,7 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
                                 color: AppTheme.primaryColor,
                               ),
                               onPressed: () {
+                                // Close the Manage dialog before showing the Edit dialog
                                 Navigator.of(context).pop();
                                 widget.controller.startEditingSubstance(
                                   substanceName,

@@ -1,6 +1,6 @@
 import 'dart:math';
 import 'boiling_point_constants.dart';
-import 'substance_data.dart';
+import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/substance_data.dart';
 
 class BoilingPointCalculator {
   // Convert Celsius to Kelvin
