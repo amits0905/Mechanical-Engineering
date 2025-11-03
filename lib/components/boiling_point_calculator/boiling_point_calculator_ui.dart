@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'boiling_point_calculator_logic.dart';
 import 'package:mechanicalengineering/theme/app_theme.dart';
 import 'package:mechanicalengineering/components/custom_widgets.dart';
-// 👈 UPDATED IMPORTS: Importing both separated dialogs
-import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/custom_substance_widgets.dart';
+import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/add_edit_substance_page.dart';
 import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/manage_substances_dialog.dart';
 
 class BoilingPointCalculatorUI extends StatefulWidget {
@@ -30,7 +29,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
     }
   }
 
-  // This method now uses the imported ManageSubstancesDialog
   void _showManageSubstancesDialog() {
     showDialog(
       context: context,
@@ -38,633 +36,853 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
     );
   }
 
+  void _navigateToAddEditSubstancePage() {
+    _controller.cancelCustomSubstanceDialog();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddEditSubstancePage(controller: _controller),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text(
-          'Boiling Point Calculator',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textOnPrimaryColor,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _showManageSubstancesDialog,
-            tooltip: 'Manage Custom Substances',
-          ),
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-              child: Column(
-                children: [
-                  // Calculation Type Toggle
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.dividerColor.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _controller.calculationMode = 't2';
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _controller.calculationMode == 't2'
-                                    ? AppTheme.primaryColor
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.thermostat_outlined,
-                                    size: 18,
-                                    color: _controller.calculationMode == 't2'
-                                        ? AppTheme.textOnPrimaryColor
-                                        : AppTheme.textSecondaryColor,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Temperature',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: _controller.calculationMode == 't2'
-                                          ? AppTheme.textOnPrimaryColor
-                                          : AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _controller.calculationMode = 'p2';
-                              });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                                horizontal: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                color: _controller.calculationMode == 'p2'
-                                    ? AppTheme.primaryColor
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.speed_outlined,
-                                    size: 18,
-                                    color: _controller.calculationMode == 'p2'
-                                        ? AppTheme.textOnPrimaryColor
-                                        : AppTheme.textSecondaryColor,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Pressure',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: _controller.calculationMode == 'p2'
-                                          ? AppTheme.textOnPrimaryColor
-                                          : AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            // _buildHeader(), // REMOVED from here
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // --- NEW POSITION ---
 
-                  const SizedBox(height: 24),
+                    // Calculation Mode
+                    _buildCalculationModeCard(),
+                    const SizedBox(height: 20),
 
-                  // Substance Selection
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              Icons.science_outlined,
-                              size: 20,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Select Substance',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimaryColor,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (_controller.isCurrentSubstanceCustom)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(
-                                  alpha: 0.1,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.person,
-                                    size: 14,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Custom',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.primaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.surfaceColor,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                            color: AppTheme.dividerColor.withValues(alpha: 0.5),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: DropdownButton<String>(
-                          value: _controller.selectedSubstance,
-                          isExpanded: true,
-                          underline: const SizedBox(),
-                          borderRadius: BorderRadius.circular(14),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          items: _controller.substances
-                              .map(
-                                (substance) => DropdownMenuItem(
-                                  value: substance,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          substance,
-                                          style: TextStyle(
-                                            color: AppTheme.textPrimaryColor,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      if (_controller.substanceDatabase
-                                          .isCustomSubstance(substance))
-                                        Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primaryColor
-                                                .withValues(alpha: 0.1),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            Icons.person,
-                                            size: 14,
-                                            color: AppTheme.primaryColor,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _controller.selectSubstance,
-                        ),
-                      ),
-                    ],
-                  ),
+                    _buildHeader(), // INSERTED here
+                    const SizedBox(height: 20), // Add spacing after the header
+                    // Substance Selection
+                    _buildSubstanceCard(),
+                    const SizedBox(height: 20),
 
-                  const SizedBox(height: 24),
+                    // Input Parameters
+                    _buildInputParametersCard(),
+                    const SizedBox(height: 20),
 
-                  // Input Fields
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppTheme.dividerColor.withValues(alpha: 0.5),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withValues(
-                                  alpha: 0.1,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.edit_note_outlined,
-                                size: 20,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Input Parameters',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        _buildModernInput(
-                          label: 'Enthalpy of Vaporization (ΔHvap)',
-                          unit: 'kJ/mol',
-                          icon: Icons.bolt_outlined,
-                          controller: _controller.dhvapController,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildModernInput(
-                          label: 'Initial Pressure (P₁)',
-                          unit: 'mmHg',
-                          icon: Icons.compress_outlined,
-                          controller: _controller.pressure1Controller,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildModernInput(
-                          label: 'Initial Boiling Point (T₁)',
-                          unit: '°C',
-                          icon: Icons.thermostat_outlined,
-                          controller: _controller.temp1Controller,
-                        ),
-                        const SizedBox(height: 16),
-                        if (_controller.calculationMode == 't2')
-                          _buildModernInput(
-                            label: 'Final Pressure (P₂)',
-                            unit: 'mmHg',
-                            icon: Icons.compress_outlined,
-                            controller: _controller.pressure2Controller,
-                          )
-                        else
-                          _buildModernInput(
-                            label: 'Final Boiling Point (T₂)',
-                            unit: '°C',
-                            icon: Icons.thermostat_outlined,
-                            controller: _controller.temp2Controller,
-                          ),
-                      ],
-                    ),
-                  ),
+                    // Calculate Button
+                    _buildCalculateButton(),
+                    const SizedBox(height: 20),
 
-                  const SizedBox(height: 28),
-
-                  // Calculate Button
-                  Container(
-                    width: double.infinity,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: CustomButton(
-                      text: 'Calculate Result',
-                      onPressed: _controller.calculateBoilingPoint,
-                      backgroundColor: AppTheme.primaryColor,
-                      textColor: AppTheme.textOnPrimaryColor,
-                      borderRadius: 16,
-                      height: 56,
-                      fontSize: 16,
-                      uppercase: false,
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Results
-                  if (_controller.result.isNotEmpty &&
-                      !_controller.result.startsWith('Error'))
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.successColor.withValues(alpha: 0.15),
-                            AppTheme.successColor.withValues(alpha: 0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppTheme.successColor.withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.successColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.white,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Result',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.successColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 16,
-                              horizontal: 20,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Text(
-                              _controller.result,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.successColor,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  if (_controller.result.isNotEmpty &&
-                      _controller.result.startsWith('Error'))
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppTheme.errorColor.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.errorColor.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.errorColor.withValues(
-                                alpha: 0.15,
-                              ),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              Icons.error_outline,
-                              color: AppTheme.errorColor,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Text(
-                              _controller.result.replaceFirst('Error: ', ''),
-                              style: TextStyle(
-                                color: AppTheme.errorColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 24),
-                ],
+                    // Result Display
+                    _buildResultCard(),
+                  ],
+                ),
               ),
             ),
-
-            // Custom Substance Dialog (Now imported)
-            if (_controller.showCustomSubstanceDialog)
-              CustomSubstanceDialog(controller: _controller),
           ],
         ),
       ),
     );
   }
 
-  // The helper method remains here as it is only used by the main UI
-  Widget _buildModernInput({
-    required String label,
-    required String unit,
-    required IconData icon,
-    required TextEditingController controller,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Row(
-            children: [
-              Icon(icon, size: 16, color: AppTheme.textSecondaryColor),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          height: 56,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.dividerColor.withValues(alpha: 0.4),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: controller,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  style: TextStyle(
-                    color: AppTheme.textPrimaryColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    hintText: 'Enter value',
-                    hintStyle: TextStyle(
-                      color: AppTheme.textSecondaryColor.withValues(alpha: 0.3),
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a value';
-                    }
-                    final parsed = double.tryParse(value);
-                    if (parsed == null) {
-                      return 'Please enter a valid number';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) {
-                    // Auto-format to 2 decimal places when user finishes typing
-                    if (value.isNotEmpty) {
-                      final parsed = double.tryParse(value);
-                      if (parsed != null) {
-                        // Format to 2 decimal places for consistency
-                        final formatted = parsed.toStringAsFixed(2);
-                        // Only update if formatting changed the value
-                        if (formatted != value && !value.endsWith('.')) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (controller.text == value) {
-                              controller.text = formatted;
-                              controller.selection = TextSelection.fromPosition(
-                                TextPosition(offset: formatted.length),
-                              );
-                            }
-                          });
-                        }
-                      }
-                    }
-                  },
-                ),
-              ),
-              Container(
-                width: 80,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.08),
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(11),
-                    bottomRight: Radius.circular(11),
-                  ),
-                ),
-                child: Text(
-                  unit,
-                  style: TextStyle(
-                    color: AppTheme.primaryColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ],
-          ),
+  AppBar _buildAppBar() {
+    return AppBar(
+      title: const Text(
+        'Boiling Point Calculator',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+      ),
+      backgroundColor: AppTheme.primaryColor,
+      foregroundColor: AppTheme.textOnPrimaryColor,
+      elevation: 0,
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.science_outlined),
+          onPressed: _showManageSubstancesDialog,
+          tooltip: 'Manage Substances',
         ),
       ],
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.05),
+          ],
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.thermostat_auto,
+                color: AppTheme.primaryColor,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Clausius-Clapeyron Equation',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Calculate boiling points at different pressures',
+            style: TextStyle(fontSize: 13, color: AppTheme.textSecondaryColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalculationModeCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.calculate_outlined, // Updated icon
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Calculation Mode',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildCalculationToggle(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalculationToggle() {
+    return Container(
+      width: double.infinity, // Force full width
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: AppTheme.primaryColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.surfaceColor,
+      ),
+      child: Row(
+        children: [
+          // Left Toggle: Calculate T₂
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(11),
+                ),
+                onTap: () => _controller.updateCalculationMode('t2'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _controller.calculationMode == 't2'
+                        ? AppTheme.primaryColor
+                        : Colors.transparent,
+                    borderRadius: const BorderRadius.horizontal(
+                      left: Radius.circular(11),
+                    ),
+                    border: _controller.calculationMode != 't2'
+                        ? Border.all(color: AppTheme.surfaceColor, width: 1)
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.thermostat_auto,
+                        color: _controller.calculationMode == 't2'
+                            ? AppTheme.textOnPrimaryColor
+                            : AppTheme.textSecondaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Calculate T₂',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _controller.calculationMode == 't2'
+                                    ? AppTheme.textOnPrimaryColor
+                                    : AppTheme.textPrimaryColor,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              'Final Temperature',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _controller.calculationMode == 't2'
+                                    ? AppTheme.textOnPrimaryColor.withValues(
+                                        alpha: 0.8,
+                                      )
+                                    : AppTheme.textSecondaryColor,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Divider
+          Container(
+            width: 1,
+            height: 28,
+            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+          ),
+
+          // Right Toggle: Calculate P₂
+          Expanded(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: const BorderRadius.horizontal(
+                  right: Radius.circular(11),
+                ),
+                onTap: () => _controller.updateCalculationMode('p2'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _controller.calculationMode == 'p2'
+                        ? AppTheme.primaryColor
+                        : Colors.transparent,
+                    borderRadius: const BorderRadius.horizontal(
+                      right: Radius.circular(11),
+                    ),
+                    border: _controller.calculationMode != 'p2'
+                        ? Border.all(color: AppTheme.surfaceColor, width: 1)
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.speed,
+                        color: _controller.calculationMode == 'p2'
+                            ? AppTheme.textOnPrimaryColor
+                            : AppTheme.textSecondaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Calculate P₂',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: _controller.calculationMode == 'p2'
+                                    ? AppTheme.textOnPrimaryColor
+                                    : AppTheme.textPrimaryColor,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              'Final Pressure',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _controller.calculationMode == 'p2'
+                                    ? AppTheme.textOnPrimaryColor.withValues(
+                                        alpha: 0.8,
+                                      )
+                                    : AppTheme.textSecondaryColor,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubstanceCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.science_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Substance',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: Icon(
+                    Icons.add_circle_outline,
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
+                  onPressed: _navigateToAddEditSubstancePage,
+                  tooltip: 'Add Custom Substance',
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: DropdownButton<String>(
+                value: _controller.selectedSubstance,
+                isExpanded: true,
+                underline: const SizedBox(),
+                borderRadius: BorderRadius.circular(12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                items: _controller.substances.map((substance) {
+                  return DropdownMenuItem(
+                    value: substance,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            substance == 'Other'
+                                ? Icons.add_circle_outline
+                                : Icons.science_outlined,
+                            color: AppTheme.primaryColor,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              substance,
+                              style: TextStyle(
+                                color: AppTheme.textPrimaryColor,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          if (_controller.substanceDatabase.isCustomSubstance(
+                            substance,
+                          ))
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.successColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppTheme.successColor.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'Custom',
+                                style: TextStyle(
+                                  color: AppTheme.successColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    if (newValue == 'Other') {
+                      _navigateToAddEditSubstancePage();
+                    } else {
+                      _controller.updateSelectedSubstance(newValue);
+                    }
+                  }
+                },
+                icon: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Icon(
+                    Icons.arrow_drop_down_rounded,
+                    color: AppTheme.primaryColor,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputParametersCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.tune_rounded,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Input Parameters',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Substance properties and calculation input',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Substance Properties
+            _buildParameterSection(
+              title: 'Substance Properties',
+              icon: Icons.thermostat_auto,
+              children: [
+                _buildParameterInput(
+                  label: 'Enthalpy of Vaporization',
+                  symbol: 'ΔHvap',
+                  unit: 'kJ/mol',
+                  controller: _controller.dhvapController,
+                  icon: Icons.water_drop_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildParameterInput(
+                  label: 'Initial Boiling Point',
+                  symbol: 'T₁',
+                  unit: '°C',
+                  controller: _controller.temp1Controller,
+                  icon: Icons.thermostat_outlined,
+                ),
+                const SizedBox(height: 12),
+                _buildParameterInput(
+                  label: 'Standard Pressure',
+                  symbol: 'P₁',
+                  unit: 'mmHg',
+                  controller: _controller.pressure1Controller,
+                  icon: Icons.speed_outlined,
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 24),
+
+            // Calculation Input
+            _buildParameterSection(
+              title: 'Calculation Input',
+              icon: Icons.input_rounded,
+              children: [
+                _buildParameterInput(
+                  label: _controller.calculationMode == 't2'
+                      ? 'Final Pressure'
+                      : 'Final Temperature',
+                  symbol: _controller.calculationMode == 't2' ? 'P₂' : 'T₂',
+                  unit: _controller.calculationMode == 't2' ? 'mmHg' : '°C',
+                  controller: _controller.calculationMode == 't2'
+                      ? _controller.pressure2Controller
+                      : _controller.temp2Controller,
+                  icon: _controller.calculationMode == 't2'
+                      ? Icons.speed_outlined
+                      : Icons.thermostat_outlined,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildParameterSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: AppTheme.primaryColor, size: 16),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimaryColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildParameterInput({
+    required String label,
+    required String symbol,
+    required String unit,
+    required TextEditingController controller,
+    required IconData icon,
+  }) {
+    return Container(
+      height: 70,
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          // Icon and Label Section - Fixed width
+          Container(
+            width: 100,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, color: AppTheme.primaryColor, size: 14),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  symbol,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Vertical Divider
+          Container(
+            width: 1,
+            height: 40,
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          ),
+
+          // Input Field - Flexible
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: TextField(
+                controller: controller,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor,
+                ),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  hintText: 'Enter value',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+          ),
+
+          // Vertical Divider
+          Container(
+            width: 1,
+            height: 40,
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          ),
+
+          // Unit Section - Fixed width
+          Container(
+            width: 60,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Center(
+              child: Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryColor,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalculateButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: () => _controller.calculate(context),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: AppTheme.textOnPrimaryColor,
+          elevation: 4,
+          shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calculate_rounded, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              'CALCULATE',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: _controller.result.isEmpty
+              ? AppTheme.primaryColor.withValues(alpha: 0.1)
+              : AppTheme.successColor.withValues(alpha: 0.3),
+          width: 2,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.analytics_outlined,
+                  color: _controller.result.isEmpty
+                      ? AppTheme.textSecondaryColor
+                      : AppTheme.successColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'RESULT',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _controller.result.isEmpty
+                        ? AppTheme.textSecondaryColor
+                        : AppTheme.successColor,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _controller.result.isEmpty
+                    ? AppTheme.surfaceColor
+                    : AppTheme.successColor.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _controller.result.isEmpty
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : AppTheme.successColor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Text(
+                _controller.result.isEmpty
+                    ? 'Enter all parameters and click CALCULATE to see the result'
+                    : _controller.result,
+                style: TextStyle(
+                  fontSize: _controller.result.isEmpty ? 15 : 18,
+                  fontWeight: _controller.result.isEmpty
+                      ? FontWeight.w400
+                      : FontWeight.w700,
+                  color: _controller.result.isEmpty
+                      ? AppTheme.textSecondaryColor
+                      : AppTheme.textPrimaryColor,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

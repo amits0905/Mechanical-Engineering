@@ -73,6 +73,27 @@ class BoilingPointController with ChangeNotifier {
     }
   }
 
+  void updateSelectedSubstance(String newSubstance) {
+    selectedSubstance = newSubstance;
+    loadSubstanceDefaults();
+    // loadSubstanceDefaults calls onUpdate?.call()
+  }
+
+  void startEditingCustomSubstance(String substanceName) {
+    final substance = substanceDatabase.getSubstance(substanceName);
+    if (substance != null) {
+      editingSubstanceName = substanceName;
+      // Load raw values into controllers
+      customSubstanceNameController.text = substance.name;
+      dhvapController.text = substance.enthalpyVaporization.toString();
+      temp1Controller.text = substance.normalBoilingPoint.toString();
+      pressure1Controller.text = substance.standardPressure.toString();
+    }
+    // Update the selected substance so the main UI displays it upon returning
+    selectedSubstance = substanceName;
+    onUpdate?.call();
+  }
+
   void selectSubstance(String? substance) {
     if (substance != null) {
       if (substance == 'Other') {
@@ -118,19 +139,19 @@ class BoilingPointController with ChangeNotifier {
       normalBoilingPoint: temp1,
       enthalpyVaporization: dhvap,
       standardPressure: pressure1,
+      isCustom: true,
     );
 
     await substanceDatabase.addUserSubstance(newSubstance);
     selectedSubstance = name;
     showCustomSubstanceDialog = false;
-    result = 'Custom substance "$name" added successfully';
+    editingSubstanceName = null;
+    result = 'Substance added successfully';
     onUpdate?.call();
   }
 
   // Edit existing custom substance
   Future<void> editCustomSubstance() async {
-    if (editingSubstanceName == null) return;
-
     final newName = customSubstanceNameController.text.trim();
     final dhvap = double.tryParse(dhvapController.text);
     final temp1 = double.tryParse(temp1Controller.text);
@@ -160,6 +181,7 @@ class BoilingPointController with ChangeNotifier {
       normalBoilingPoint: temp1,
       enthalpyVaporization: dhvap,
       standardPressure: pressure1,
+      isCustom: true,
     );
 
     await substanceDatabase.updateUserSubstance(
@@ -177,37 +199,12 @@ class BoilingPointController with ChangeNotifier {
   Future<void> deleteCustomSubstance(String substanceName) async {
     if (substanceDatabase.isCustomSubstance(substanceName)) {
       await substanceDatabase.removeUserSubstance(substanceName);
-
       // If the deleted substance was selected, switch to default
       if (selectedSubstance == substanceName) {
         selectedSubstance = substanceDatabase.getDefaultSubstance();
         loadSubstanceDefaults();
       }
-
-      result = 'Substance "$substanceName" deleted successfully';
       onUpdate?.call();
-    }
-  }
-
-  // Start editing a custom substance
-  void startEditingSubstance(String substanceName) {
-    if (substanceDatabase.isCustomSubstance(substanceName)) {
-      final substance = substanceDatabase.getSubstance(substanceName);
-      if (substance != null) {
-        editingSubstanceName = substanceName;
-        customSubstanceNameController.text = substance.name;
-        dhvapController.text = substance.enthalpyVaporization.toStringAsFixed(
-          BoilingPointConstants.enthalpyPrecision,
-        );
-        temp1Controller.text = substance.normalBoilingPoint.toStringAsFixed(
-          BoilingPointConstants.temperaturePrecision,
-        );
-        pressure1Controller.text = substance.standardPressure.toStringAsFixed(
-          BoilingPointConstants.pressurePrecision,
-        );
-        showCustomSubstanceDialog = true;
-        onUpdate?.call();
-      }
     }
   }
 
@@ -216,88 +213,138 @@ class BoilingPointController with ChangeNotifier {
     showCustomSubstanceDialog = false;
     editingSubstanceName = null;
     customSubstanceNameController.clear();
+    // Reload defaults based on the currently selected substance
+    loadSubstanceDefaults();
     onUpdate?.call();
   }
 
-  // Get only custom substances for management
-  List<String> get customSubstances => substanceDatabase.getCustomSubstances();
+  // Check if current substance is custom
+  bool get isCurrentSubstanceCustom {
+    return substanceDatabase.isCustomSubstance(selectedSubstance);
+  }
 
-  // Check if current selected substance is custom
-  bool get isCurrentSubstanceCustom =>
-      substanceDatabase.isCustomSubstance(selectedSubstance);
+  void updateCalculationMode(String mode) {
+    calculationMode = mode;
+    result = ''; // Clear result on mode change
+    onUpdate?.call();
+  }
 
-  // Calculate boiling point or pressure based on mode
-  void calculateBoilingPoint() {
-    try {
-      final dhvap = double.tryParse(dhvapController.text);
-      final p1 = double.tryParse(pressure1Controller.text);
-      final t1 = double.tryParse(temp1Controller.text);
-      final p2 = double.tryParse(pressure2Controller.text);
-      final t2 = double.tryParse(temp2Controller.text);
+  void calculate(BuildContext context) {
+    // Input validation and parsing
+    final dhvap = double.tryParse(dhvapController.text);
+    final p1 = double.tryParse(pressure1Controller.text);
+    final t1 = double.tryParse(temp1Controller.text);
 
-      // Validate inputs
-      if (dhvap == null || p1 == null || t1 == null) {
-        result = 'Error: Please fill all required fields';
-        onUpdate?.call();
-        return;
-      }
-
-      if (calculationMode == 't2') {
-        if (p2 == null) {
-          result = 'Error: Please enter final pressure P₂';
-          onUpdate?.call();
-          return;
-        }
-        // Calculate T2 using Clausius-Clapeyron equation
-        final t2Kelvin = calculateT2(dhvap, p1, t1, p2);
-        final t2Celsius = t2Kelvin - 273.15;
-        result = 'Final Boiling Point: ${t2Celsius.toStringAsFixed(2)}°C';
-      } else {
-        if (t2 == null) {
-          result = 'Error: Please enter final temperature T₂';
-          onUpdate?.call();
-          return;
-        }
-        // Calculate P2 using Clausius-Clapeyron equation
-        final p2 = calculateP2(dhvap, p1, t1, t2);
-        result = 'Final Pressure: ${p2.toStringAsFixed(2)} mmHg';
-      }
-
+    if (dhvap == null || p1 == null || t1 == null) {
+      result = 'Error: Missing substance property value.';
       onUpdate?.call();
+      return;
+    }
+
+    try {
+      if (calculationMode == 't2') {
+        final p2 = double.tryParse(pressure2Controller.text);
+        if (p2 == null) {
+          result = 'Error: Final Pressure (P₂) is required.';
+          onUpdate?.call();
+          return;
+        }
+        final t2Kelvin = _calculateT2Kelvin(dhvap, p1, t1, p2);
+        final t2Celsius = _kelvinToCelsius(t2Kelvin);
+
+        result =
+            'Final Boiling Point: ${t2Celsius.toStringAsFixed(BoilingPointConstants.temperaturePrecision)} °C';
+      } else {
+        final t2 = double.tryParse(temp2Controller.text);
+        if (t2 == null) {
+          result = 'Error: Final Boiling Point (T₂) is required.';
+          onUpdate?.call();
+          return;
+        }
+
+        final p2 = _calculateP2(dhvap, p1, t1, t2);
+        result =
+            'Final Pressure: ${p2.toStringAsFixed(BoilingPointConstants.pressurePrecision)} mmHg';
+      }
     } catch (e) {
-      result = 'Error: Invalid calculation - ${e.toString()}';
+      result =
+          'Error: Invalid calculation - ${e.toString().replaceAll('Exception: ', '')}';
+    } finally {
       onUpdate?.call();
     }
   }
 
-  double calculateT2(double dhvap, double p1, double t1, double p2) {
-    // Convert ΔHvap from kJ/mol to J/mol
+  // --- Core Calculation Logic (Kept private) ---
+
+  double _celsiusToKelvin(double celsius) {
+    return celsius + 273.15;
+  }
+
+  double _kelvinToCelsius(double kelvin) {
+    return kelvin - 273.15;
+  }
+
+  // Calculate T2 (Kelvin)
+  double _calculateT2Kelvin(
+    double dhvap,
+    double p1,
+    double t1Celsius,
+    double p2,
+  ) {
+    // 1. Convert to J/mol and Kelvin
     final dhvapJ = dhvap * 1000;
-    // Convert T1 from Celsius to Kelvin
-    final t1Kelvin = t1 + 273.15;
-    // Gas constant R = 8.314 J/mol·K
+    final t1Kelvin = _celsiusToKelvin(t1Celsius);
 
-    // Clausius-Clapeyron equation: ln(P2/P1) = (ΔHvap/R) * (1/T1 - 1/T2)
-    final lnP2P1 = _safeLog(p2 / p1);
+    // ✅ Wrap throw statements in braces
+    if (p1 <= 0 || p2 <= 0) {
+      throw Exception(BoilingPointConstants.positivePressureRequired);
+    }
+    if (t1Kelvin <= 0) {
+      throw Exception(BoilingPointConstants.aboveAbsoluteZero);
+    }
 
-    final t2Kelvin = 1 / (1 / t1Kelvin - lnP2P1 / (dhvapJ / 8.314));
+    // Rearranged Clausius-Clapeyron equation to solve for 1/T2:
+    // 1/T2 = 1/T1 - (R / ΔHvap) * ln(P2/P1)
+    final term2 =
+        (BoilingPointConstants.gasConstant / dhvapJ) * _safeLog(p2 / p1);
+    final oneOverT2 = (1 / t1Kelvin) - term2;
 
-    if (t2Kelvin.isNaN || !t2Kelvin.isFinite || t2Kelvin <= 0) {
-      throw Exception('Invalid temperature calculation');
+    if (oneOverT2 <= 0) {
+      throw Exception(BoilingPointConstants.infiniteTemperature);
+    }
+
+    final t2Kelvin = 1 / oneOverT2;
+
+    if (t2Kelvin <= 0) {
+      throw Exception(BoilingPointConstants.aboveAbsoluteZero);
     }
 
     return t2Kelvin;
   }
 
-  double calculateP2(double dhvap, double p1, double t1, double t2) {
-    // Convert ΔHvap from kJ/mol to J/mol
+  // Calculate P2
+  double _calculateP2(
+    double dhvap,
+    double p1,
+    double t1Celsius,
+    double t2Celsius,
+  ) {
+    // 1. Convert to J/mol and Kelvin
     final dhvapJ = dhvap * 1000;
-    // Convert temperatures from Celsius to Kelvin
-    final t1Kelvin = t1 + 273.15;
-    final t2Kelvin = t2 + 273.15;
+    final t1Kelvin = _celsiusToKelvin(t1Celsius);
+    final t2Kelvin = _celsiusToKelvin(t2Celsius);
+
+    if (p1 <= 0) {
+      throw Exception(BoilingPointConstants.positivePressureRequired);
+    }
+    if (t1Kelvin <= 0 || t2Kelvin <= 0) {
+      throw Exception(BoilingPointConstants.aboveAbsoluteZero);
+    }
 
     // Clausius-Clapeyron equation: ln(P2/P1) = (ΔHvap/R) * (1/T1 - 1/T2)
-    final exponent = (dhvapJ / 8.314) * (1 / t1Kelvin - 1 / t2Kelvin);
+    final exponent =
+        (dhvapJ / BoilingPointConstants.gasConstant) *
+        (1 / t1Kelvin - 1 / t2Kelvin);
     final p2 = p1 * _safeExp(exponent);
 
     if (p2.isNaN || !p2.isFinite || p2 <= 0) {
@@ -307,13 +354,13 @@ class BoilingPointController with ChangeNotifier {
     return p2;
   }
 
+  // Custom log/exp approximations (since dart:math is not guaranteed)
   double _safeLog(double x) {
-    if (x <= 0) throw Exception('Log of non-positive number');
+    if (x <= 0) {
+      throw Exception('Log of non-positive number');
+    }
     if (x == 1) return 0;
-    if (x < 1e-10) throw Exception('Number too small for log');
-    if (x > 1e10) throw Exception('Number too large for log');
 
-    // Simple approximation for natural log
     int n = 0;
     double y = x;
     while (y >= 2) {
@@ -325,38 +372,32 @@ class BoilingPointController with ChangeNotifier {
       n--;
     }
 
-    y -= 1;
+    y -= 1; // y is now between -1 and 1
     double result = y - (y * y) / 2 + (y * y * y) / 3 - (y * y * y * y) / 4;
     result += n * 0.69314718056; // ln(2)
 
+    if (result.isNaN || !result.isFinite) {
+      throw Exception('Log calculation failed');
+    }
     return result;
   }
 
   double _safeExp(double x) {
-    if (x > 100) return double.infinity;
-    if (x < -100) return 0.0;
+    if (x > 700) {
+      throw Exception('Exponent too large');
+    }
+    if (x < -700) return 0;
 
-    double result = 1.0;
+    double sum = 1.0;
     double term = 1.0;
-
-    for (int i = 1; i < 50; i++) {
-      term *= x / i;
-      result += term;
-      if (term.abs() < 1e-15) break;
+    for (int n = 1; n < 20; n++) {
+      term *= x / n;
+      sum += term;
     }
 
-    return result;
-  }
-
-  @override
-  void dispose() {
-    substanceDatabase.removeListener(_onSubstanceDatabaseChanged);
-    dhvapController.dispose();
-    pressure1Controller.dispose();
-    temp1Controller.dispose();
-    pressure2Controller.dispose();
-    temp2Controller.dispose();
-    customSubstanceNameController.dispose();
-    super.dispose();
+    if (sum.isNaN || !sum.isFinite) {
+      throw Exception('Exp calculation failed');
+    }
+    return sum;
   }
 }

@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_calculator_logic.dart';
 import 'package:mechanicalengineering/theme/app_theme.dart';
 
-// Note: It's assumed CustomSubstanceDialog is imported by the UI file,
-// and this file only needs the Controller and common UI components.
+// ✅ NEW IMPORT: Required for navigating to the full page editor
+import 'package:mechanicalengineering/components/boiling_point_calculator/Other element/add_edit_substance_page.dart';
 
 // --------------------------------------------------------------------------
-// Manage Substances Dialog (For Viewing/Deleting)
+// Manage Substances Dialog (For Viewing/Deleting/Launching Edit)
 // --------------------------------------------------------------------------
 
 class ManageSubstancesDialog extends StatefulWidget {
@@ -33,31 +33,47 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
     }
   }
 
-  Future<void> _handleDeleteSubstance(
-    String substanceName,
-    BuildContext dialogContext,
-  ) async {
-    await widget.controller.deleteCustomSubstance(substanceName);
-    // Logic to close the current confirmation dialog and update the list
-    if (mounted && dialogContext.mounted) {
-      Navigator.of(dialogContext).pop();
-      // If the list becomes empty, also close the Manage dialog
-      if (widget.controller.customSubstances.isEmpty) {
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      }
+  // ✅ UPDATED METHOD TO NAVIGATE TO FULL PAGE FOR EDITING
+  void _handleEdit(String substanceName) {
+    // 1. Tell the controller which substance to edit (loads data into text controllers)
+    widget.controller.startEditingCustomSubstance(substanceName);
+
+    // 2. Close the current dialog.
+    if (mounted && context.mounted) {
+      Navigator.of(context).pop();
+
+      // 3. Push the new full page for editing.
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              AddEditSubstancePage(controller: widget.controller),
+        ),
+      );
     }
   }
 
-  Future<void> _handleClearAllSubstances(BuildContext dialogContext) async {
-    await widget.controller.substanceDatabase.clearCustomSubstances();
-    // Logic to close both confirmation and management dialogs
-    if (mounted && dialogContext.mounted) {
-      Navigator.of(dialogContext).pop();
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
+  // --- Deletion Handlers ---
+
+  Future<void> _handleDeleteSubstance(String substanceName) async {
+    // 1. Delete substance
+    await widget.controller.deleteCustomSubstance(substanceName);
+
+    // 2. Update result area if the deleted substance was selected
+    if (widget.controller.selectedSubstance == substanceName) {
+      // Fall back to 'Water' or the first available substance
+      widget.controller.updateSelectedSubstance(
+        widget.controller.substances.first,
+      );
+    }
+
+    if (mounted && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$substanceName deleted successfully.'),
+          backgroundColor: AppTheme.primaryColor,
+        ),
+      );
     }
   }
 
@@ -65,17 +81,21 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Substance'),
-        content: Text('Are you sure you want to delete "$substanceName"?'),
+        title: const Text('Confirm Deletion'),
+        content: Text(
+          'Are you sure you want to delete the custom substance "$substanceName"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => _handleDeleteSubstance(substanceName, context),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Delete'),
+            onPressed: () {
+              Navigator.of(context).pop(); // Close confirmation dialog
+              _handleDeleteSubstance(substanceName);
+            },
+            child: Text('Delete', style: TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -86,9 +106,9 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Clear All Substances'),
+        title: const Text('Clear All'),
         content: const Text(
-          'Are you sure you want to delete all custom substances? This action cannot be undone.',
+          'Are you sure you want to delete ALL custom substances? This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -96,116 +116,93 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => _handleClearAllSubstances(context),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Clear All'),
+            onPressed: () async {
+              Navigator.of(context).pop(); // Close confirmation dialog
+              await widget.controller.substanceDatabase.clearCustomSubstances();
+              if (mounted && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('All custom substances cleared.'),
+                    backgroundColor: AppTheme.primaryColor,
+                  ),
+                );
+                // Also close the main manage dialog if it's empty now
+                if (widget.controller.substanceDatabase
+                    .getCustomSubstanceNames()
+                    .isEmpty) {
+                  Navigator.of(context).pop();
+                }
+              }
+            },
+            child: Text(
+              'Clear All',
+              style: TextStyle(color: AppTheme.errorColor),
+            ),
           ),
         ],
       ),
     );
   }
+  // --- End Deletion Handlers ---
 
   @override
   Widget build(BuildContext context) {
-    final customSubstances = widget.controller.customSubstances;
+    final customSubstances = widget.controller.substanceDatabase
+        .getCustomSubstanceNames();
 
-    return Dialog(
-      backgroundColor: AppTheme.scaffoldBackgroundColor,
+    return AlertDialog(
+      title: const Text('Manage Custom Substances'),
+      contentPadding: const EdgeInsets.only(top: 20, left: 24, right: 24),
+      actionsPadding: const EdgeInsets.all(20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
+      content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Manage Custom Substances',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textPrimaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your custom substances (${customSubstances.length})',
-              style: TextStyle(
-                color: AppTheme.textSecondaryColor,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
             if (customSubstances.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40.0),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.inventory_2,
-                      size: 48,
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No custom substances yet',
-                      style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Add substances using the "Other" option',
-                      style: TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
+                padding: const EdgeInsets.only(bottom: 20),
+                child: Text(
+                  'You have not added any custom substances yet.',
+                  style: TextStyle(color: AppTheme.textSecondaryColor),
                 ),
               )
             else
-              SizedBox(
-                height: 300,
+              Text(
+                'Substances:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimaryColor,
+                ),
+              ),
+            if (customSubstances.isNotEmpty)
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                margin: const EdgeInsets.only(top: 10, bottom: 20),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppTheme.dividerColor),
+                  borderRadius: BorderRadius.circular(8),
+                ),
                 child: ListView.builder(
+                  shrinkWrap: true,
                   itemCount: customSubstances.length,
                   itemBuilder: (context, index) {
                     final substanceName = customSubstances[index];
-                    final substance = widget.controller.substanceDatabase
-                        .getSubstance(substanceName);
-
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.science,
-                          color: AppTheme.primaryColor,
-                        ),
-                        title: Text(
-                          substanceName,
-                          style: TextStyle(
-                            color: AppTheme.textPrimaryColor,
-                            fontWeight: FontWeight.w500,
+                    return Container(
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppTheme.dividerColor,
+                            width: index < customSubstances.length - 1 ? 1 : 0,
                           ),
                         ),
-                        subtitle: substance != null
-                            ? Text(
-                                'BP: ${substance.normalBoilingPoint}°C • ΔHvap: ${substance.enthalpyVaporization} kJ/mol',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                              )
-                            : null,
+                      ),
+                      child: ListTile(
+                        title: Text(substanceName),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                        ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -215,13 +212,8 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
                                 size: 18,
                                 color: AppTheme.primaryColor,
                               ),
-                              onPressed: () {
-                                // Close the Manage dialog before showing the Edit dialog
-                                Navigator.of(context).pop();
-                                widget.controller.startEditingSubstance(
-                                  substanceName,
-                                );
-                              },
+                              // ⚠️ EDIT ACTION CALLS NEW HANDLE METHOD
+                              onPressed: () => _handleEdit(substanceName),
                               tooltip: 'Edit',
                             ),
                             IconButton(
@@ -241,6 +233,38 @@ class _ManageSubstancesDialogState extends State<ManageSubstancesDialog> {
                   },
                 ),
               ),
+            // ✅ ADD NEW SUBSTANCE BUTTON - NOW NAVIGATES
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // 1. Close the current dialog
+                  Navigator.of(context).pop();
+
+                  // 2. Set controller to 'Add' mode
+                  widget.controller.cancelCustomSubstanceDialog();
+
+                  // 3. Push the new full page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          AddEditSubstancePage(controller: widget.controller),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add New Custom Substance'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: AppTheme.textOnPrimaryColor,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 20),
             if (customSubstances.isNotEmpty)
               SizedBox(
