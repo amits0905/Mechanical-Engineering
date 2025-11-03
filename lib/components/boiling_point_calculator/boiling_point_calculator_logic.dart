@@ -22,8 +22,8 @@ class BoilingPointController with ChangeNotifier {
   final SubstanceDatabase substanceDatabase = SubstanceDatabase();
 
   List<String> get substances => [
+    // FIX: Removed 'Other' from this list to prevent dropdown assertion errors
     ...substanceDatabase.getAvailableSubstances(),
-    'Other',
   ];
 
   Map<String, Map<String, double>> get substanceDefaults =>
@@ -40,8 +40,15 @@ class BoilingPointController with ChangeNotifier {
 
   Future<void> _initializeDatabase() async {
     await substanceDatabase.initialize();
+
     // Set initial substance after database is loaded
     selectedSubstance = substanceDatabase.getDefaultSubstance();
+
+    // FIX: If the old value "Other" is loaded from persistence, reset it to a valid substance.
+    if (selectedSubstance == 'Other') {
+      selectedSubstance = 'Water';
+    }
+
     loadSubstanceDefaults();
     onUpdate?.call();
   }
@@ -73,13 +80,25 @@ class BoilingPointController with ChangeNotifier {
     }
   }
 
-  void updateSelectedSubstance(String newSubstance) {
-    selectedSubstance = newSubstance;
+  void updateSelectedSubstance(String name) {
+    selectedSubstance = name;
     loadSubstanceDefaults();
     // loadSubstanceDefaults calls onUpdate?.call()
   }
 
-  void startEditingCustomSubstance(String substanceName) {
+  // Prepares the controller state for adding a new custom substance
+  void prepareForAdding() {
+    editingSubstanceName = null;
+    customSubstanceNameController.clear();
+    // Clear input fields for the user to enter new data
+    dhvapController.clear();
+    temp1Controller.clear();
+    pressure1Controller.clear();
+    onUpdate?.call();
+  }
+
+  // Prepares the controller state for editing an existing custom substance
+  void prepareForEditing(String substanceName) {
     final substance = substanceDatabase.getSubstance(substanceName);
     if (substance != null) {
       editingSubstanceName = substanceName;
@@ -94,18 +113,10 @@ class BoilingPointController with ChangeNotifier {
     onUpdate?.call();
   }
 
+  // FIX: Simplified to remove 'Other' handling, as adding a custom substance is now done via a dedicated button/page.
   void selectSubstance(String? substance) {
     if (substance != null) {
-      if (substance == 'Other') {
-        // Show custom substance dialog
-        showCustomSubstanceDialog = true;
-        editingSubstanceName = null;
-        customSubstanceNameController.clear();
-        onUpdate?.call();
-      } else {
-        selectedSubstance = substance;
-        loadSubstanceDefaults();
-      }
+      updateSelectedSubstance(substance);
     }
   }
 

@@ -1,33 +1,57 @@
+// substance_data.dart
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:collection';
 import 'dart:convert';
-import 'package:mechanicalengineering/components/boiling_point_calculator/boiling_point_constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'default_substances.dart'; // <-- NEW IMPORT
 
-// 1. Substance Model Class - RESTORED
+/// The data model for a single substance.
 class Substance {
   final String name;
-  final double normalBoilingPoint; // °C
-  final double enthalpyVaporization; // kJ/mol
-  final double standardPressure; // mmHg
+  final double normalBoilingPoint; // T1 in °C
+  final double enthalpyVaporization; // ΔHvap in kJ/mol
+  final double standardPressure; // P1 in mmHg
   final bool isCustom;
-  final String? customId;
 
-  Substance({
+  const Substance({
     required this.name,
     required this.normalBoilingPoint,
     required this.enthalpyVaporization,
-    this.standardPressure = BoilingPointConstants.standardPressure,
+    required this.standardPressure,
     this.isCustom = false,
-    this.customId,
   });
 
+  // Factory constructor for creating an instance from a map (used for storage)
+  factory Substance.fromJson(Map<String, dynamic> json) {
+    return Substance(
+      name: json['name'] as String,
+      normalBoilingPoint: json['normalBoilingPoint'] as double,
+      enthalpyVaporization: json['enthalpyVaporization'] as double,
+      standardPressure: json['standardPressure'] as double,
+      isCustom: json['isCustom'] as bool? ?? false,
+    );
+  }
+
+  // Convert the instance to a map (used for storage)
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'normalBoilingPoint': normalBoilingPoint,
+      'enthalpyVaporization': enthalpyVaporization,
+      'standardPressure': standardPressure,
+      'isCustom': isCustom,
+    };
+  }
+}
+
+// Helper extension to add copyWith to the Substance class (best practice)
+extension SubstanceCopyWith on Substance {
   Substance copyWith({
     String? name,
     double? normalBoilingPoint,
     double? enthalpyVaporization,
     double? standardPressure,
     bool? isCustom,
-    String? customId,
   }) {
     return Substance(
       name: name ?? this.name,
@@ -35,240 +59,149 @@ class Substance {
       enthalpyVaporization: enthalpyVaporization ?? this.enthalpyVaporization,
       standardPressure: standardPressure ?? this.standardPressure,
       isCustom: isCustom ?? this.isCustom,
-      customId: customId ?? this.customId,
-    );
-  }
-
-  // Convert to map for serialization
-  Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'normalBoilingPoint': normalBoilingPoint,
-      'enthalpyVaporization': enthalpyVaporization,
-      'standardPressure': standardPressure,
-      'isCustom': isCustom,
-      'customId': customId,
-    };
-  }
-
-  // Create from map for deserialization
-  factory Substance.fromMap(Map<String, dynamic> map) {
-    return Substance(
-      name: map['name'] as String,
-      normalBoilingPoint: (map['normalBoilingPoint'] as num).toDouble(),
-      enthalpyVaporization: (map['enthalpyVaporization'] as num).toDouble(),
-      standardPressure: (map['standardPressure'] as num).toDouble(),
-      isCustom: map['isCustom'] as bool,
-      customId: map['customId'] as String?,
     );
   }
 }
 
-// 2. Substance Database Class
+/// Manages the list of known and user-defined substances.
 class SubstanceDatabase with ChangeNotifier {
-  // Common substances database (read-only)
-  static final Map<String, Substance> _commonSubstances = {
-    'Water': Substance(
-      name: 'Water',
-      normalBoilingPoint: 100.0,
-      enthalpyVaporization: 40.66, // kJ/mol
-    ),
-    'Ethanol': Substance(
-      name: 'Ethanol',
-      normalBoilingPoint: 78.37,
-      enthalpyVaporization: 38.56,
-    ),
-    'Methanol': Substance(
-      name: 'Methanol',
-      normalBoilingPoint: 64.7,
-      enthalpyVaporization: 35.21,
-    ),
-    'Acetone': Substance(
-      name: 'Acetone',
-      normalBoilingPoint: 56.0,
-      enthalpyVaporization: 29.1,
-    ),
-    'Benzene': Substance(
-      name: 'Benzene',
-      normalBoilingPoint: 80.1,
-      enthalpyVaporization: 30.72,
-    ),
-  };
+  static const String _customSubstancesKey = 'customSubstances';
 
-  // User-defined custom substances (read/write from SharedPreferences)
-  Map<String, Substance> _userSubstances = {};
+  // Fixed, non-editable database of common substances
+  static final Map<String, Substance> _fixedSubstances =
+      defaultFixedSubstances; // <-- REFERENCE THE NEW FILE
 
-  static const String _userSubstancesKey = 'customSubstances';
+  // User-defined custom substances
+  final Map<String, Substance> _customSubstances = {};
 
-  // Initialization method to load data
+  // --- Initialization and Persistence ---
+
   Future<void> initialize() async {
-    await _loadUserSubstances();
-    // Notify listeners after loading data
-    notifyListeners();
+    await _loadCustomSubstances();
   }
 
   // Load custom substances from local storage
-  Future<void> _loadUserSubstances() async {
+  Future<void> _loadCustomSubstances() async {
     final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_userSubstancesKey);
-    if (jsonString != null) {
-      final List<dynamic> jsonList = json.decode(jsonString);
-      _userSubstances = {
-        for (var map in jsonList.map((j) => Substance.fromMap(j)))
-          map.name: map,
-      };
-    }
-  }
+    final customSubstancesString = prefs.getString(_customSubstancesKey);
+    _customSubstances.clear();
 
-  // Save custom substances to local storage
-  Future<void> _saveUserSubstances() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = _userSubstances.values.map((sub) => sub.toMap()).toList();
-    final jsonString = json.encode(jsonList);
-    await prefs.setString(_userSubstancesKey, jsonString);
+    if (customSubstancesString != null) {
+      final List<dynamic> jsonList = jsonDecode(customSubstancesString);
+      for (var json in jsonList) {
+        final substance = Substance.fromJson(json as Map<String, dynamic>);
+        _customSubstances[substance.name] = substance;
+      }
+    }
     notifyListeners();
   }
 
-  // Get all available substances (common + custom)
-  List<String> getAvailableSubstances() {
-    final allNames = [..._commonSubstances.keys, ..._userSubstances.keys];
-    return allNames.toList();
+  // Save custom substances to local storage
+  Future<void> _saveCustomSubstances() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonList = _customSubstances.values
+        .map((substance) => substance.toJson())
+        .toList();
+    final customSubstancesString = jsonEncode(jsonList);
+    await prefs.setString(_customSubstancesKey, customSubstancesString);
   }
 
-  // ✅ FIX: Added method to get only custom substance names
-  List<String> getCustomSubstanceNames() {
-    return _userSubstances.keys.toList();
+  // --- Public Getters ---
+
+  /// Returns a combined list of all substance names (fixed + custom).
+  UnmodifiableListView<String> getAvailableSubstances() {
+    return UnmodifiableListView([
+      ..._fixedSubstances.keys,
+      ..._customSubstances.keys,
+    ]);
   }
 
-  // Get only common substances
-  List<String> getCommonSubstances() {
-    return _commonSubstances.keys.toList();
+  /// Returns the default substance name for initial loading.
+  String getDefaultSubstance() {
+    return 'Water';
   }
 
-  // Get a substance by name
+  /// Returns the Substance object for a given name.
   Substance? getSubstance(String name) {
-    if (_commonSubstances.containsKey(name)) {
-      return _commonSubstances[name];
+    if (_fixedSubstances.containsKey(name)) {
+      return _fixedSubstances[name];
     }
-    if (_userSubstances.containsKey(name)) {
-      return _userSubstances[name];
+    return _customSubstances[name];
+  }
+
+  /// Returns the data in a simplified map format for UI controllers.
+  Map<String, double>? getSubstanceDataMap(String name) {
+    final substance = getSubstance(name);
+    if (substance != null) {
+      return {
+        'dhvap': substance.enthalpyVaporization,
+        'temp1': substance.normalBoilingPoint,
+        'pressure1': substance.standardPressure,
+      };
     }
     return null;
   }
 
-  // Check if a substance is custom
-  bool isCustomSubstance(String name) {
-    return _userSubstances.containsKey(name);
-  }
-
-  // Check if a substance name already exists (common or custom)
-  bool containsSubstance(String name) {
-    return _commonSubstances.containsKey(name) ||
-        _userSubstances.containsKey(name);
-  }
-
-  bool substanceNameExists(String name) {
-    // Case-insensitive check
-    final lowerName = name.toLowerCase();
-
-    // Check common substances
-    if (_commonSubstances.keys.any((key) => key.toLowerCase() == lowerName)) {
-      return true;
-    }
-
-    // Check custom substances
-    if (_userSubstances.keys.any((key) => key.toLowerCase() == lowerName)) {
-      return true;
-    }
-
-    return false;
-  }
-
-  // Add a new custom substance
-  Future<void> addUserSubstance(Substance substance) async {
-    if (containsSubstance(substance.name)) {
-      throw Exception('Substance "${substance.name}" already exists.');
-    }
-    _userSubstances[substance.name] = substance.copyWith(isCustom: true);
-    await _saveUserSubstances();
-  }
-
-  // Update an existing custom substance
-  Future<void> updateUserSubstance(
-    String oldName,
-    Substance newSubstance,
-  ) async {
-    if (!_userSubstances.containsKey(oldName)) {
-      throw Exception(
-        'Cannot update: Substance "$oldName" not found in custom list.',
-      );
-    }
-
-    // Check for name change conflict
-    if (oldName != newSubstance.name && containsSubstance(newSubstance.name)) {
-      throw Exception('Substance name "${newSubstance.name}" already exists.');
-    }
-
-    // 1. Remove the old entry
-    _userSubstances.remove(oldName);
-
-    // 2. Add the new entry (re-saves it as custom)
-    _userSubstances[newSubstance.name] = newSubstance.copyWith(isCustom: true);
-
-    await _saveUserSubstances();
-  }
-
-  // Remove a custom substance
-  Future<void> removeUserSubstance(String name) async {
-    if (_userSubstances.containsKey(name)) {
-      _userSubstances.remove(name);
-      await _saveUserSubstances();
-    }
-  }
-
-  // Clear all custom substances
-  Future<void> clearCustomSubstances() async {
-    _userSubstances.clear();
-    await _saveUserSubstances();
-  }
-
-  // Get substance data in map format (for backward compatibility)
-  Map<String, double>? getSubstanceDataMap(String substance) {
-    final sub = getSubstance(substance);
-    if (sub == null) return null;
-
-    return {
-      'normalBoilingPoint': sub.normalBoilingPoint,
-      'enthalpyVaporization': sub.enthalpyVaporization,
-      'standardPressure': sub.standardPressure,
-    };
-  }
-
-  // Get substance defaults for UI (for backward compatibility)
+  /// Returns a map of all substances in the map format.
   Map<String, Map<String, double>> getSubstanceDefaults() {
     final Map<String, Map<String, double>> defaults = {};
-
-    for (final substance in _commonSubstances.values) {
-      defaults[substance.name] = {
-        'dhvap': substance.enthalpyVaporization,
-        'temp1': substance.normalBoilingPoint,
-        'pressure1': substance.standardPressure,
-      };
-    }
-
-    // Add custom substances
-    for (final substance in _userSubstances.values) {
-      defaults[substance.name] = {
-        'dhvap': substance.enthalpyVaporization,
-        'temp1': substance.normalBoilingPoint,
-        'pressure1': substance.standardPressure,
-      };
+    for (final name in getAvailableSubstances()) {
+      final data = getSubstanceDataMap(name);
+      if (data != null) {
+        defaults[name] = data;
+      }
     }
     return defaults;
   }
 
-  // Get a default substance to select when a custom substance is deleted
-  String getDefaultSubstance() {
-    return _commonSubstances.keys.first;
+  /// Checks if the substance name exists in either fixed or custom lists.
+  bool containsSubstance(String name) {
+    return _fixedSubstances.containsKey(name) ||
+        _customSubstances.containsKey(name);
+  }
+
+  /// Checks if a substance is custom (and therefore editable/deletable).
+  bool isCustomSubstance(String name) {
+    return _customSubstances.containsKey(name);
+  }
+
+  /// Checks if a substance name is already taken.
+  bool substanceNameExists(String name) {
+    return containsSubstance(name);
+  }
+
+  // --- Custom Substance Management ---
+
+  /// Adds a new user-defined substance.
+  Future<void> addUserSubstance(Substance substance) async {
+    if (_fixedSubstances.containsKey(substance.name)) {
+      throw Exception('Cannot overwrite fixed substance: ${substance.name}');
+    }
+    _customSubstances[substance.name] = substance.copyWith(isCustom: true);
+    await _saveCustomSubstances();
+    notifyListeners();
+  }
+
+  /// Updates an existing user-defined substance.
+  Future<void> updateUserSubstance(
+    String oldName,
+    Substance newSubstance,
+  ) async {
+    if (oldName != newSubstance.name) {
+      _customSubstances.remove(oldName);
+    }
+    _customSubstances[newSubstance.name] = newSubstance.copyWith(
+      isCustom: true,
+    );
+    await _saveCustomSubstances();
+    notifyListeners();
+  }
+
+  /// Removes a user-defined substance.
+  Future<void> removeUserSubstance(String name) async {
+    if (_customSubstances.remove(name) != null) {
+      await _saveCustomSubstances();
+      notifyListeners();
+    }
   }
 }

@@ -35,7 +35,7 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   }
 
   void _navigateToAddEditSubstancePage() {
-    _controller.cancelCustomSubstanceDialog();
+    _controller.prepareForAdding(); // Prepare controller for adding
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -155,49 +155,71 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   }
 
   Widget _buildSubstanceCard() {
+    // Use a final variable to store the list of substances for cleaner code
+    final List<String> availableSubstances = _controller.substances;
+
     return _buildCard(
-      title: 'Substance',
+      title: 'Substance Selection', // Better title than just 'Substance'
       icon: Icons.science_outlined,
-      trailing: IconButton(
-        icon: Icon(Icons.add_circle_outline, color: AppTheme.primaryColor),
+      // Moved the "Add Custom Substance" action here for better discoverability
+      trailing: TextButton.icon(
+        icon: const Icon(Icons.add_circle_outline, size: 20),
+        label: const Text('Add Custom'),
         onPressed: _navigateToAddEditSubstancePage,
-        tooltip: 'Add Custom Substance',
+        style: TextButton.styleFrom(
+          foregroundColor: AppTheme.primaryColor,
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
       ),
       child: DropdownButtonFormField<String>(
+        // FIX 1: Changed 'initialValue' to the correct 'value' parameter
         initialValue: _controller.selectedSubstance,
         isExpanded: true,
-        decoration: _inputDecoration(),
+        decoration: _inputDecoration(
+          hint: 'Select a substance',
+          icon: Icons.search,
+        ),
         borderRadius: BorderRadius.circular(12),
-        items: _controller.substances.map((s) {
-          return DropdownMenuItem(
-            value: s,
-            child: Row(
-              children: [
-                Icon(
-                  s == 'Other' ? Icons.add_circle_outline : Icons.science,
-                  color: AppTheme.primaryColor,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    s,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: AppTheme.textPrimaryColor,
-                    ),
+        // Check if the list is empty to prevent potential null issues,
+        // although unlikely with the Water default.
+        items: availableSubstances.isEmpty
+            ? null
+            : availableSubstances.map((s) {
+                final isCustom = _controller.substanceDatabase
+                    .isCustomSubstance(s);
+                return DropdownMenuItem(
+                  value: s,
+                  child: Row(
+                    children: [
+                      // Dynamic icon: 'Water' for Water, 'science' for others
+                      Icon(
+                        s == 'Water' ? Icons.water_drop : Icons.science,
+                        // FIX 2: Added the named argument 'alpha:' to fix the positional argument error
+                        color: AppTheme.primaryColor.withValues(
+                          alpha: isCustom ? 0.8 : 1.0,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          s,
+                          style: TextStyle(
+                            fontWeight: isCustom
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: AppTheme.textPrimaryColor,
+                          ),
+                        ),
+                      ),
+                      // Use a more distinct tag for custom substances
+                      if (isCustom) _buildTag('Custom', AppTheme.primaryColor),
+                    ],
                   ),
-                ),
-                if (_controller.substanceDatabase.isCustomSubstance(s))
-                  _buildTag('Custom', AppTheme.successColor),
-              ],
-            ),
-          );
-        }).toList(),
+                );
+              }).toList(),
         onChanged: (val) {
-          if (val == 'Other') {
-            _navigateToAddEditSubstancePage();
-          } else {
-            _controller.updateSelectedSubstance(val ?? '');
+          if (val != null) {
+            _controller.updateSelectedSubstance(val);
           }
         },
       ),
@@ -504,27 +526,51 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   }
 
   Widget _buildCalculationToggle() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ChoiceChip(
-          label: const Text('Calculate T₂'),
-          selected: _controller.calculationMode == 't2',
-          onSelected: (selected) {
-            _controller.calculationMode = 't2';
-            _updateState();
-          },
+    return SizedBox(
+      // Force the segmented button to take the full available width
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        segments: <ButtonSegment<String>>[
+          ButtonSegment<String>(
+            value: 't2',
+            label: const Text('Calculate T₂'),
+            // Make this segment expand to fill available space
+            // The segment for 't2' is selected, so we add a checkmark icon.
+            icon: _controller.calculationMode == 't2'
+                ? const Icon(Icons.check)
+                : null,
+          ),
+          ButtonSegment<String>(
+            value: 'p2',
+            label: const Text('Calculate P₂'),
+            // Make this segment expand to fill available space
+            icon: _controller.calculationMode == 'p2'
+                ? const Icon(Icons.check)
+                : null,
+          ),
+        ],
+        // The selected value must be a Set.
+        selected: <String>{_controller.calculationMode},
+        onSelectionChanged: (Set<String> newSelection) {
+          if (newSelection.isNotEmpty) {
+            _controller.updateCalculationMode(newSelection.first);
+          }
+        },
+        // Optional styling for a more custom look
+        style: SegmentedButton.styleFrom(
+          // Set colors to match your theme
+          selectedForegroundColor: AppTheme.textOnPrimaryColor, // White text
+          selectedBackgroundColor: AppTheme.primaryColor, // Your primary color
+          foregroundColor: AppTheme.textPrimaryColor, // Unselected text color
+          // Ensures the button takes up the full width of the parent SizedBox
+          // This property expands all ButtonSegments to equally fill the SegmentedButton's width
+          // Use `BorderSide.none` to remove the default thin border between segments
+          side: BorderSide(color: AppTheme.primaryColor, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
-        const SizedBox(width: 12),
-        ChoiceChip(
-          label: const Text('Calculate P₂'),
-          selected: _controller.calculationMode == 'p2',
-          onSelected: (selected) {
-            _controller.calculationMode = 'p2';
-            _updateState();
-          },
-        ),
-      ],
+      ),
     );
   }
 }
