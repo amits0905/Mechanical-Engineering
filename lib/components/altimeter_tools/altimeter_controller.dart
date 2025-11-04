@@ -1,5 +1,3 @@
-// lib/components/altimeter_tools/altimeter_controller.dart
-
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -116,9 +114,15 @@ class AltimeterController extends ChangeNotifier {
       throw Exception("Location permission permanently denied.");
     }
 
+    // FIX: Replace deprecated 'desiredAccuracy' with 'locationSettings'
+    const LocationSettings locationSettings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      // You can add more settings here if needed, like forceAndroidLocationManager: true, etc.
+    );
+
     // Get current position
     _locationData = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: locationSettings,
     );
   }
 
