@@ -155,13 +155,11 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   }
 
   Widget _buildSubstanceCard() {
-    // Use a final variable to store the list of substances for cleaner code
     final List<String> availableSubstances = _controller.substances;
 
     return _buildCard(
-      title: 'Substance Selection', // Better title than just 'Substance'
+      title: 'Substance Selection',
       icon: Icons.science_outlined,
-      // Moved the "Add Custom Substance" action here for better discoverability
       trailing: TextButton.icon(
         icon: const Icon(Icons.add_circle_outline, size: 20),
         label: const Text('Add Custom'),
@@ -172,16 +170,35 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
         ),
       ),
       child: DropdownButtonFormField<String>(
-        // FIX 1: Changed 'initialValue' to the correct 'value' parameter
         initialValue: _controller.selectedSubstance,
         isExpanded: true,
         decoration: _inputDecoration(
           hint: 'Select a substance',
           icon: Icons.search,
         ),
+        menuMaxHeight: MediaQuery.of(context).size.height * 0.5,
         borderRadius: BorderRadius.circular(12),
-        // Check if the list is empty to prevent potential null issues,
-        // although unlikely with the Water default.
+
+        // NEW: Use selectedItemBuilder to control the displayed text's style.
+        selectedItemBuilder: (context) {
+          return availableSubstances.map<Widget>((String s) {
+            final isCustom = _controller.substanceDatabase.isCustomSubstance(s);
+
+            // Render only the text, styled like a regular input field value.
+            return Text(
+              s,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isCustom ? FontWeight.bold : FontWeight.w500,
+                color: AppTheme.textPrimaryColor,
+              ),
+            );
+          }).toList();
+        },
+
+        // END NEW
         items: availableSubstances.isEmpty
             ? null
             : availableSubstances.map((s) {
@@ -189,31 +206,33 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
                     .isCustomSubstance(s);
                 return DropdownMenuItem(
                   value: s,
-                  child: Row(
-                    children: [
-                      // Dynamic icon: 'Water' for Water, 'science' for others
-                      Icon(
-                        s == 'Water' ? Icons.water_drop : Icons.science,
-                        // FIX 2: Added the named argument 'alpha:' to fix the positional argument error
-                        color: AppTheme.primaryColor.withValues(
-                          alpha: isCustom ? 0.8 : 1.0,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          s,
-                          style: TextStyle(
-                            fontWeight: isCustom
-                                ? FontWeight.bold
-                                : FontWeight.w500,
-                            color: AppTheme.textPrimaryColor,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Row(
+                      children: [
+                        Icon(
+                          s == 'Water' ? Icons.water_drop : Icons.science,
+                          color: AppTheme.primaryColor.withValues(
+                            alpha: isCustom ? 0.8 : 1.0,
                           ),
                         ),
-                      ),
-                      // Use a more distinct tag for custom substances
-                      if (isCustom) _buildTag('Custom', AppTheme.primaryColor),
-                    ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            s,
+                            style: TextStyle(
+                              fontWeight: isCustom
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isCustom)
+                          _buildTag('Custom', AppTheme.primaryColor),
+                      ],
+                    ),
                   ),
                 );
               }).toList(),
