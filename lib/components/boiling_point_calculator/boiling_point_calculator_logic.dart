@@ -14,7 +14,7 @@ class BoilingPointController with ChangeNotifier {
 
   // State
   String selectedSubstance = 'Water';
-  String calculationMode = 't2'; // 't2' or 'p2'
+  // Removed String calculationMode = 't2'; - No longer needed for UI toggle
   String result = '';
   bool showCustomSubstanceDialog = false;
   String? editingSubstanceName; // null when adding, not null when editing
@@ -76,6 +76,11 @@ class BoilingPointController with ChangeNotifier {
 
       // Clear result when substance changes
       result = '';
+
+      // Clear T2 and P2 inputs (important after loading new substance data)
+      temp2Controller.clear();
+      pressure2Controller.clear();
+
       onUpdate?.call();
     }
   }
@@ -234,48 +239,87 @@ class BoilingPointController with ChangeNotifier {
     return substanceDatabase.isCustomSubstance(selectedSubstance);
   }
 
-  void updateCalculationMode(String mode) {
-    calculationMode = mode;
-    result = ''; // Clear result on mode change
-    onUpdate?.call();
-  }
-
   void calculate(BuildContext context) {
     // Input validation and parsing
     final dhvap = double.tryParse(dhvapController.text);
     final p1 = double.tryParse(pressure1Controller.text);
     final t1 = double.tryParse(temp1Controller.text);
 
+    // Check which final parameter is provided
+    final p2Input = pressure2Controller.text;
+    final t2Input = temp2Controller.text;
+    final p2 = double.tryParse(p2Input);
+    final t2 = double.tryParse(t2Input);
+
+    // --- Step 1: Validate Initial Properties ---
     if (dhvap == null || p1 == null || t1 == null) {
-      result = 'Error: Missing substance property value.';
+      result = 'Error: Missing initial substance property (ΔHvap, T₁, or P₁).';
       onUpdate?.call();
       return;
     }
 
+    // --- Step 2: Determine Calculation Mode (Inference) ---
+    final bool isP2Provided = p2Input.isNotEmpty;
+    final bool isT2Provided = t2Input.isNotEmpty;
+
+    if (isP2Provided && isT2Provided) {
+      result =
+          'Error: Please leave EITHER Final Pressure (P₂) OR Final Temperature (T₂) blank to calculate.';
+      onUpdate?.call();
+      return;
+    }
+
+    if (!isP2Provided && !isT2Provided) {
+      result =
+          'Error: Final Pressure (P₂) or Final Temperature (T₂) must be entered.';
+      onUpdate?.call();
+      return;
+    }
+
+    // Clear previous result
+    result = '';
+
     try {
-      if (calculationMode == 't2') {
-        final p2 = double.tryParse(pressure2Controller.text);
+      if (isP2Provided) {
+        // Calculate T₂ (Final Pressure P₂ is provided)
         if (p2 == null) {
-          result = 'Error: Final Pressure (P₂) is required.';
+          result = 'Error: Final Pressure (P₂) must be a valid number.';
           onUpdate?.call();
           return;
         }
         final t2Kelvin = _calculateT2Kelvin(dhvap, p1, t1, p2);
         final t2Celsius = _kelvinToCelsius(t2Kelvin);
 
+        // 1. Set the calculated value into the T₂ TextField
+        temp2Controller.text = t2Celsius.toStringAsFixed(
+          BoilingPointConstants.temperaturePrecision,
+        );
+
+        // 2. Set the result text for the result card
         result =
-            'Final Boiling Point: ${t2Celsius.toStringAsFixed(BoilingPointConstants.temperaturePrecision)} °C';
+            '${t2Celsius.toStringAsFixed(BoilingPointConstants.temperaturePrecision)} °C';
+
+        // REMOVED: pressure2Controller.clear(); <-- This caused the issue
       } else {
-        final t2 = double.tryParse(temp2Controller.text);
+        // Calculate P₂ (Final Temperature T₂ is provided)
         if (t2 == null) {
-          result = 'Error: Final Boiling Point (T₂) is required.';
+          result = 'Error: Final Temperature (T₂) must be a valid number.';
           onUpdate?.call();
           return;
         }
 
-        final p2 = _calculateP2(dhvap, p1, t1, t2);
+        final p2Calculated = _calculateP2(dhvap, p1, t1, t2);
+
+        // 1. Set the calculated value into the P₂ TextField
+        pressure2Controller.text = p2Calculated.toStringAsFixed(
+          BoilingPointConstants.pressurePrecision,
+        );
+
+        // 2. Set the result text for the result card
         result =
-            'Final Pressure: ${p2.toStringAsFixed(BoilingPointConstants.pressurePrecision)} mmHg';
+            '${p2Calculated.toStringAsFixed(BoilingPointConstants.pressurePrecision)} mmHg';
+
+        // REMOVED: temp2Controller.clear(); <-- This caused the issue
       }
     } catch (e) {
       result =

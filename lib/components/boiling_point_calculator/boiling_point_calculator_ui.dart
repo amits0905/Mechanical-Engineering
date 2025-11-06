@@ -16,6 +16,9 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   final BoilingPointController _controller = BoilingPointController();
   final _formKey = GlobalKey<FormState>();
 
+  bool highlightT2 = false;
+  bool highlightP2 = false;
+
   @override
   void initState() {
     super.initState();
@@ -35,13 +38,47 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
   }
 
   void _navigateToAddEditSubstancePage() {
-    _controller.prepareForAdding(); // Prepare controller for adding
+    _controller.prepareForAdding();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => AddEditSubstancePage(controller: _controller),
       ),
     );
+  }
+
+  void _onCalculatePressed() {
+    FocusScope.of(context).unfocus();
+
+    // Reset highlighting
+    setState(() {
+      highlightT2 = false;
+      highlightP2 = false;
+    });
+
+    final t2Text = _controller.temp2Controller.text.trim();
+    final p2Text = _controller.pressure2Controller.text.trim();
+
+    // ✅ Case: Both filled -> highlight both and show error
+    if (t2Text.isNotEmpty && p2Text.isNotEmpty) {
+      setState(() {
+        highlightT2 = true;
+        highlightP2 = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Only one of T₂ or P₂ should be filled.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // Validate form normally
+    if (_formKey.currentState?.validate() ?? false) {
+      _controller.calculate(context);
+    }
   }
 
   @override
@@ -52,27 +89,19 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 350),
-            child: SingleChildScrollView(
-              key: ValueKey(_controller.calculationMode),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  _buildCalculationModeCard(),
-                  const SizedBox(height: 20),
-                  _buildSubstanceCard(),
-                  const SizedBox(height: 20),
-                  _buildInputParametersCard(),
-                  const SizedBox(height: 20),
-                  _buildHeader(),
-                  const SizedBox(height: 20),
-                  _buildCalculateButton(),
-                  const SizedBox(height: 20),
-                  _buildResultCard(),
-                  const SizedBox(height: 20),
-                ],
-              ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                _buildSubstanceCard(),
+                const SizedBox(height: 20),
+                _buildInputParametersCard(),
+                const SizedBox(height: 20),
+                _buildHeader(),
+                const SizedBox(height: 20),
+                _buildCalculateButton(),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),
@@ -146,14 +175,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
     );
   }
 
-  Widget _buildCalculationModeCard() {
-    return _buildCard(
-      title: 'Calculation Mode',
-      icon: Icons.calculate_outlined,
-      child: _buildCalculationToggle(),
-    );
-  }
-
   Widget _buildSubstanceCard() {
     final List<String> availableSubstances = _controller.substances;
 
@@ -178,13 +199,9 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
         ),
         menuMaxHeight: MediaQuery.of(context).size.height * 0.5,
         borderRadius: BorderRadius.circular(12),
-
-        // NEW: Use selectedItemBuilder to control the displayed text's style.
         selectedItemBuilder: (context) {
           return availableSubstances.map<Widget>((String s) {
             final isCustom = _controller.substanceDatabase.isCustomSubstance(s);
-
-            // Render only the text, styled like a regular input field value.
             return Text(
               s,
               maxLines: 1,
@@ -197,8 +214,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
             );
           }).toList();
         },
-
-        // END NEW
         items: availableSubstances.isEmpty
             ? null
             : availableSubstances.map((s) {
@@ -206,40 +221,34 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
                     .isCustomSubstance(s);
                 return DropdownMenuItem(
                   value: s,
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: Row(
-                      children: [
-                        Icon(
-                          s == 'Water' ? Icons.water_drop : Icons.science,
-                          color: AppTheme.primaryColor.withValues(
-                            alpha: isCustom ? 0.8 : 1.0,
-                          ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        s == 'Water' ? Icons.water_drop : Icons.science,
+                        color: AppTheme.primaryColor.withValues(
+                          alpha: isCustom ? 0.8 : 1.0,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            s,
-                            style: TextStyle(
-                              fontWeight: isCustom
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              color: AppTheme.textPrimaryColor,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          s,
+                          style: TextStyle(
+                            fontWeight: isCustom
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: AppTheme.textPrimaryColor,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (isCustom)
-                          _buildTag('Custom', AppTheme.primaryColor),
-                      ],
-                    ),
+                      ),
+                      if (isCustom) _buildTag('Custom', AppTheme.primaryColor),
+                    ],
                   ),
                 );
               }).toList(),
         onChanged: (val) {
-          if (val != null) {
-            _controller.updateSelectedSubstance(val);
-          }
+          if (val != null) _controller.updateSelectedSubstance(val);
         },
       ),
     );
@@ -282,27 +291,35 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
             ),
           ]),
           const SizedBox(height: 20),
-          _buildSection('Calculation Input', Icons.calculate, [
-            _buildParameterField(
-              _controller.calculationMode == 't2' ? 'P₂' : 'T₂',
-              _controller.calculationMode == 't2'
-                  ? 'Final Pressure'
-                  : 'Final Temperature',
-              _controller.calculationMode == 't2' ? 'mmHg' : '°C',
-              _controller.calculationMode == 't2'
-                  ? _controller.pressure2Controller
-                  : _controller.temp2Controller,
-              _controller.calculationMode == 't2'
-                  ? Icons.compress
-                  : Icons.thermostat,
-              validator: _controller.calculationMode == 't2'
-                  ? _validatePressure
-                  : _validateTemperature,
-              tooltip: _controller.calculationMode == 't2'
-                  ? 'Pressure range: 0.1 - 2000 mmHg'
-                  : 'Temperature range: -273 - 500°C',
-            ),
-          ]),
+          _buildSection(
+            'Final Parameters',
+            Icons.calculate,
+            [
+              _buildParameterField(
+                'T₂',
+                'Final Temperature',
+                '°C',
+                _controller.temp2Controller,
+                Icons.thermostat,
+                validator: _validateTemperature,
+                tooltip:
+                    'Temperature range: -273 - 500°C (Leave blank to calculate)',
+                highlight: highlightT2,
+              ),
+              _buildParameterField(
+                'P₂',
+                'Final Pressure',
+                'mmHg',
+                _controller.pressure2Controller,
+                Icons.compress,
+                validator: _validatePressure,
+                tooltip:
+                    'Pressure range: 0.1 - 2000 mmHg (Leave blank to calculate)',
+                highlight: highlightP2,
+              ),
+            ],
+            subtitle: '1 Parameter needs to be fill by user',
+          ),
         ],
       ),
     );
@@ -313,12 +330,7 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
       width: double.infinity,
       height: 56,
       child: ElevatedButton.icon(
-        onPressed: () {
-          FocusScope.of(context).unfocus();
-          if (_formKey.currentState?.validate() ?? false) {
-            _controller.calculate(context);
-          }
-        },
+        onPressed: _onCalculatePressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: AppTheme.textOnPrimaryColor,
@@ -339,58 +351,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
       ),
     );
   }
-
-  Widget _buildResultCard() {
-    final hasResult = _controller.result.isNotEmpty;
-    final hasError = _controller.result.toLowerCase().contains('error');
-
-    return _buildCard(
-      title: 'Result',
-      icon: Icons.analytics_outlined,
-      iconColor: hasError
-          ? AppTheme.errorColor
-          : (hasResult ? AppTheme.successColor : AppTheme.textSecondaryColor),
-      borderColor: hasError
-          ? AppTheme.errorColor.withValues(alpha: 0.3)
-          : (hasResult
-                ? AppTheme.successColor.withValues(alpha: 0.3)
-                : AppTheme.primaryColor.withValues(alpha: 0.1)),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 250),
-        child: Container(
-          key: ValueKey(
-            '${_controller.result}_${DateTime.now().millisecondsSinceEpoch}',
-          ),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: hasError
-                ? AppTheme.errorColor.withValues(alpha: 0.05)
-                : (hasResult
-                      ? AppTheme.successColor.withValues(alpha: 0.05)
-                      : AppTheme.surfaceColor),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                hasResult ? _controller.result : 'No calculation yet',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: hasError
-                      ? AppTheme.errorColor
-                      : AppTheme.textPrimaryColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Utility Widgets
 
   Widget _buildCard({
     required String title,
@@ -445,23 +405,49 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
     IconData icon, {
     String? Function(String?)? validator,
     String? tooltip,
+    bool highlight = false,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: const TextInputType.numberWithOptions(
-          decimal: true,
-          signed: false,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: highlight ? Colors.redAccent : Colors.transparent,
+            width: highlight ? 2 : 0,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: highlight
+              ? [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : [],
         ),
-        decoration: _inputDecoration(
-          label: label,
-          hint: hint,
-          suffix: suffix,
-          icon: icon,
-          tooltip: tooltip,
+        child: TextFormField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: true,
+            signed: false,
+          ),
+          decoration: _inputDecoration(
+            label: label,
+            hint: hint,
+            suffix: suffix,
+            icon: icon,
+            tooltip: tooltip,
+          ),
+          validator: (value) {
+            if (label == 'T₂' || label == 'P₂') {
+              if (value == null || value.isEmpty) return null;
+            }
+            return validator?.call(value);
+          },
         ),
-        validator: validator,
       ),
     );
   }
@@ -505,7 +491,12 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
     return null;
   }
 
-  Widget _buildSection(String title, IconData icon, List<Widget> children) {
+  Widget _buildSection(
+    String title,
+    IconData icon,
+    List<Widget> children, {
+    String? subtitle,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -513,9 +504,26 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
           children: [
             Icon(icon, size: 20, color: AppTheme.primaryColor),
             const SizedBox(width: 6),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
@@ -539,55 +547,6 @@ class _BoilingPointCalculatorUIState extends State<BoilingPointCalculatorUI> {
           color: color,
           fontSize: 10,
           fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCalculationToggle() {
-    return SizedBox(
-      // Force the segmented button to take the full available width
-      width: double.infinity,
-      child: SegmentedButton<String>(
-        segments: <ButtonSegment<String>>[
-          ButtonSegment<String>(
-            value: 't2',
-            label: const Text('Calculate T₂'),
-            // Make this segment expand to fill available space
-            // The segment for 't2' is selected, so we add a checkmark icon.
-            icon: _controller.calculationMode == 't2'
-                ? const Icon(Icons.check)
-                : null,
-          ),
-          ButtonSegment<String>(
-            value: 'p2',
-            label: const Text('Calculate P₂'),
-            // Make this segment expand to fill available space
-            icon: _controller.calculationMode == 'p2'
-                ? const Icon(Icons.check)
-                : null,
-          ),
-        ],
-        // The selected value must be a Set.
-        selected: <String>{_controller.calculationMode},
-        onSelectionChanged: (Set<String> newSelection) {
-          if (newSelection.isNotEmpty) {
-            _controller.updateCalculationMode(newSelection.first);
-          }
-        },
-        // Optional styling for a more custom look
-        style: SegmentedButton.styleFrom(
-          // Set colors to match your theme
-          selectedForegroundColor: AppTheme.textOnPrimaryColor, // White text
-          selectedBackgroundColor: AppTheme.primaryColor, // Your primary color
-          foregroundColor: AppTheme.textPrimaryColor, // Unselected text color
-          // Ensures the button takes up the full width of the parent SizedBox
-          // This property expands all ButtonSegments to equally fill the SegmentedButton's width
-          // Use `BorderSide.none` to remove the default thin border between segments
-          side: BorderSide(color: AppTheme.primaryColor, width: 1.2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
         ),
       ),
     );
